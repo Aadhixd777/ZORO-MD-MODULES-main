@@ -878,7 +878,7 @@ async function realownerCommand(sock, chatId, message) {
     try {
         const axios = require('axios');
         
-        const birthDate = new Date('2008-05-01');
+        const birthDate = new Date('1111-11-11');
         const now = new Date();
         
         const somaliaOffset = 3 * 60;
@@ -907,7 +907,7 @@ async function realownerCommand(sock, chatId, message) {
 📛 *Name:* ROMEO
 ✨ *Nickname:* ROMEO
 🌍 *Location:* India, Kerala
-🎂 *Birth Date:* May 1111
+🎂 *Birth Date:* march 1111
 👤 *Current Age:* ${age} years old
 ⏰ *Next Birthday:* ${daysUntilBirthday} days
 

@@ -78,7 +78,7 @@ async function pingCommand(sock, chatId, message) {
 
 *🔥 Engine status: Running flawlessly.*
 *━━━━━━━━━━━━━━━━━━━━━━━━━━━*
-> *© 𝗢𝘄𝗻𝗲𝗱 & 𝗗𝗲𝘃𝗲𝗹𝗼𝗽𝗲𝗱 𝗯𝘆 𝗥𝗢𝗠𝗘𝗢 ⚡*`;
+> *© 𝗢𝘄𝗻𝗲𝗿 & 𝗗𝗲𝘃𝗲𝗹𝗼𝗽𝗲𝗱 𝗯𝘆 👑 𝗥𝗢𝗠𝗘𝗢 ⚡*`;
 
         const imageUrl = "https://i.postimg.cc/wjdj0ZG1/zoro.jpg"; 
         const bgmPath = './media/zoro_bgm.mp3'; 
@@ -89,13 +89,13 @@ async function pingCommand(sock, chatId, message) {
             caption: botInfo.trim() 
         }, { quoted: message });
 
-        // 2. Play the background BGM (voice note)
+        // 2. Play the background BGM as a normal Audio File
         if (fs.existsSync(bgmPath)) {
             const audioBuffer = fs.readFileSync(bgmPath);
             await sock.sendMessage(chatId, {
                 audio: audioBuffer,
-                mimetype: 'audio/mp4',
-                ptt: true 
+                mimetype: 'audio/mp4', // Standard audio player format
+                ptt: false // Set to false to show as a clickable audio file, not a voice note
             }, { quoted: message });
         }
 

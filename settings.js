@@ -2,7 +2,7 @@ const settings = {
   packname: 'ZORO MD',
   author: '‎',
   botName: "ZORO MD",
-  botOwner: 'ROMEO', // Your name
+  botOwner: 'Aadhixd', // Your name
   ownerNumber: '', //Set your number here without + symbol, just add country code & number without any space
   giphyApiKey: 'qnl7ssQChTdPjsKta2Ax2LMaGXz303tq',
   commandMode: "public",

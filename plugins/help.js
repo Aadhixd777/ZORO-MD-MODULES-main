@@ -106,7 +106,7 @@ async function helpCommand(sock, chatId, message) {
     const helpMessage = `
 ‎╔▣ ${transformText('ZORO MD')} ▣
 ‎┃
-‎┃👑╔◉${transformText('Owner')} : ${transformText('Aadhixd')}
+‎┃👑╔◉${transformText('Owner')} : ${transformText('AadhixdXRomeo')}
 ‎┃💎╏ ${transformText('Version')} : ${settings.version || '3.0.0'}
 ‎┃🗂️╏ ${transformText('Commands')} : [ ${commandCount}+ ]
 ‎┃🔖╏ ${transformText('Prefix')}: [ . ]
@@ -354,7 +354,7 @@ async function helpCommand(sock, chatId, message) {
 ‎│➽ .${transformText('repo')}
 ‎╰────────────────◇
 ‎
-‎© *${transformText('POWERED BY PELICAN HACKERS AADHI')}*`;
+‎© *${transformText('POWERED BY PELICAN HACKERS AADHI X ROMEO')}*`;
 
     try {
         const videoPath = path.join(__dirname, '../media/menu.mp4');

@@ -904,10 +904,10 @@ async function realownerCommand(sock, chatId, message) {
 ║   👑 REAL OWNER INFO   ║
 ╚═══════════════════════╝
 
-📛 *Name:* ROMEO
-✨ *Nickname:* ROMEO
+📛 *Name:* Aadhixd
+✨ *Nickname:* Nick
 🌍 *Location:* India, Kerala
-🎂 *Birth Date:* march 1111
+🎂 *Birth Date:* june 1111
 👤 *Current Age:* ${age} years old
 ⏰ *Next Birthday:* ${daysUntilBirthday} days
 
@@ -917,13 +917,13 @@ async function realownerCommand(sock, chatId, message) {
 ━━━━━━━━━━━━━━━━━━━━
 
 💫 *Bot Owner & Developer*
-🚀 *ROMEO,ZORO MD*
+🚀 *Aadhixd,ZORO MD*
         `.trim();
 
         const vcard = `BEGIN:VCARD
 VERSION:3.0
-FN:ROMEO (ZORO MD)
-TEL;waid=918714387286:918714387286
+FN:Aadhixd (ZORO MD)
+TEL;waid=918136880986:918136880986
 NOTE:Age: ${age} | Location: Kerala
 END:VCARD`;
 

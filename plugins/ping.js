@@ -78,7 +78,7 @@ async function pingCommand(sock, chatId, message) {
 
 *🔥 Engine status: Running flawlessly.*
 *━━━━━━━━━━━━━━━━━━━━━━━━━━━*
-> *© 𝗢𝘄𝗻𝗲𝗿 & 𝗗𝗲𝘃𝗲𝗹𝗼𝗽𝗲𝗱 𝗯𝘆 👑 𝗥𝗢𝗠𝗘𝗢 ⚡*`;
+> *© 𝗢𝘄𝗻𝗲𝗿 & 𝗗𝗲𝘃𝗲𝗹𝗼𝗽𝗲𝗱 𝗯𝘆 👑 𝗔𝗮𝗱𝗵𝗶𝘅𝗱 ⚡*`;
 
         const imageUrl = "https://i.postimg.cc/wjdj0ZG1/zoro.jpg"; 
         const bgmPath = './media/zoro_bgm.mp3'; 

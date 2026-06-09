@@ -71,7 +71,7 @@ async function aliveCommand(sock, chatId, message) {
 ┃━━━━━━━━━━━━━━━━━━━━━
 ┃ 🟢 𝗦𝘁𝗮𝘁𝘂𝘀: 𝗢𝗻𝗹𝗶𝗻𝗲 & 𝗔𝗰𝘁𝗶𝘃𝗲
 ┃━━━━━━━━━━━━━━━━━━━━━
-┃ 👑 𝗢𝘄𝗻𝗲𝗿: 𝗥𝗢𝗠𝗘𝗢
+┃ 👑 𝗢𝘄𝗻𝗲𝗿: 𝗔𝗮𝗱𝗵𝗶𝘅𝗱
 ┃ 📦 𝗩𝗲𝗿𝘀𝗶𝗼𝗻: ${settings.version}
 ┃ 🔐 𝗠𝗼𝗱𝗲: ${botMode}
 ┃ ⏰ 𝗧𝗶𝗺𝗲: ${currentTime}
@@ -90,7 +90,7 @@ async function aliveCommand(sock, chatId, message) {
   
   📝 𝗧𝘆𝗽𝗲 *.𝗺𝗲𝗻𝘂* 𝗳𝗼𝗿 𝗰𝗼𝗺𝗺𝗮𝗻𝗱𝘀
   
-  © 𝗣𝗼𝘄𝗲𝗿𝗲𝗱 𝗯𝘆 𝗥𝗢𝗠𝗘𝗢`;
+  © 𝗣𝗼𝘄𝗲𝗿𝗲𝗱 𝗯𝘆 𝗔𝗮𝗱𝗵𝗶𝘅𝗱`;
 
         // Image URL
         const imageUrl = "https://i.postimg.cc/TY3zG950/zoro-md.jpg"; 

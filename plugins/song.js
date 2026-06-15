@@ -1,5 +1,5 @@
 const yts = require('yt-search');
-const axios = require('axios');
+const ytdl = require('ytdl-core');
 
 async function songCommand(sock, chatId, message) {
     try {
@@ -15,7 +15,7 @@ async function songCommand(sock, chatId, message) {
         // 1. Mass reaction (Lightning!)
         await sock.sendMessage(chatId, { react: { text: "⚡", key: message.key } });
 
-        // 2. Processing message (Hacker Style)
+        // 2. Processing message
         let processingMsg = await sock.sendMessage(chatId, { 
             text: `🔍 *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐒𝐄𝐀𝐑𝐂𝐇𝐈𝐍𝐆* 🔍\n\n» *Query:* \`${text}\`\n» *Status:* 📡 Connecting to YouTube...\n\n_⏳ Please wait a moment..._` 
         }, { quoted: message });
@@ -30,43 +30,23 @@ async function songCommand(sock, chatId, message) {
         const duration = video.timestamp || 'Unknown';
         const views = video.views ? video.views.toLocaleString() : 'Unknown';
 
-        // 3. Info card showing full song details
+        // 3. Info card
         await sock.sendMessage(chatId, { 
-            text: `🎵 *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐌𝐔𝐒𝐈𝐂 𝐅𝐎𝐔𝐍𝐃* 🎵\n\n📝 *Title:* ${video.title}\n⏱️ *Duration:* ${duration}\n👁️ *Views:* ${views}\n🎬 *Channel:* ${video.author.name}\n\n📥 *Status:* ⚡ Downloading file from server...`,
+            text: `🎵 *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐌𝐔𝐒𝐈𝐂 𝐅𝐎𝐔𝐍𝐃* 🎵\n\n📝 *Title:* ${video.title}\n⏱️ *Duration:* ${duration}\n👁️ *Views:* ${views}\n🎬 *Channel:* ${video.author.name}\n\n📥 *Status:* ⚡ Downloading directly...`,
             edit: processingMsg.key
         });
 
-        const apiUrls = [
-            `https://api.agatz.xyz/api/ytmp3?url=${encodeURIComponent(video.url)}`,
-            `https://yt-dl.officialhectormanuel.workers.dev/?url=${encodeURIComponent(video.url)}`
-        ];
-
-        let audioBuffer = null;
-
-        for (let url of apiUrls) {
-            try {
-                const res = await axios.get(url);
-                const downloadUrl = res.data.audio || res.data.result?.download || res.data.url;
-                
-                if (downloadUrl) {
-                    const audioRes = await axios.get(downloadUrl, { 
-                        responseType: 'arraybuffer',
-                        headers: { 'User-Agent': 'Mozilla/5.0' }
-                    });
-                    
-                    if (audioRes.data.byteLength > 100000) {
-                        audioBuffer = Buffer.from(audioRes.data);
-                        break; 
-                    }
-                }
-            } catch (e) {
-                console.log("API Failed, trying next backup...");
-            }
+        // Direct Download using ytdl-core
+        const stream = ytdl(video.url, { 
+            filter: 'audioonly', 
+            quality: 'highestaudio' 
+        });
+        
+        const chunks = [];
+        for await (const chunk of stream) {
+            chunks.push(chunk);
         }
-
-        if (!audioBuffer) {
-            throw new Error("None of the download servers are responding.");
-        }
+        const audioBuffer = Buffer.concat(chunks);
 
         // 4. Uploading status
         await sock.sendMessage(chatId, { 
@@ -81,13 +61,12 @@ async function songCommand(sock, chatId, message) {
             ptt: false
         }, { quoted: message });
 
-        // 6. Final success message (Royal finishing!)
+        // 6. Final success message
         await sock.sendMessage(chatId, { 
             text: `✅ *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐌𝐔𝐒𝐈𝐂 𝐃𝐄𝐋𝐈𝐕𝐄𝐑𝐄𝐃* ✅\n\n🎶 *${video.title}*\n✨ Enjoy your music, master!`, 
             edit: processingMsg.key 
         });
         
-        // Crown reaction for the boss!
         await sock.sendMessage(chatId, { react: { text: "👑", key: message.key } });
 
     } catch (err) {

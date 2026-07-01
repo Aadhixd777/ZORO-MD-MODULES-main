@@ -84,3 +84,4 @@ Function({ on: 'messages.upsert', fromMe: false }, async (message, query, client
 
     return await client.sendMessage(m.chat, module, { quoted: m.data });
 });
+module.exports = { handleMentionDetection, mentionToggleCommand, setMentionCommand };

@@ -1,9 +1,9 @@
-const settings = {
-  packname: 'ZORO MD',
-  author: '‎',
+const settings = { // Fixed: 'Const' -> 'const'
+  packname: 'ZORO-MD',
+  author: 'Aadhixd',
   botName: "ZORO MD",
-  botOwner: 'Aadhixd', // Your name
-  ownerNumber: '', //Set your number here without + symbol, just add country code & number without any space
+  botOwner: 'Aadhixd', 
+  ownerNumber: '918136880986', 
   giphyApiKey: 'qnl7ssQChTdPjsKta2Ax2LMaGXz303tq',
   commandMode: "public",
   maxStoreMessages: 20, 

@@ -354,7 +354,7 @@ async function helpCommand(sock, chatId, message) {
 ‎│➽ .${transformText('repo')}
 ‎╰────────────────◇
 
-‎© *${transformText('POWERED BY XD BROTHERS AADHIXD X ROMEOXD')}*`;
+‎© *${transformText('POWERED BY XD BROTHERS AADHIXD')}*`;
 
     // Green Verified Badge context setup with Instagram Profile URL
     const contextInfo = {

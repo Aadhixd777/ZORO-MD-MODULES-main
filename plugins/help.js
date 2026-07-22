@@ -106,7 +106,7 @@ async function helpCommand(sock, chatId, message) {
     const helpMessage = `
 ‎╔▣ ${transformText('ZORO MD')} ▣
 ‎┃
-‎┃👑╔◉${transformText('Owner')} : ${transformText('Aadhi X Romeo')} ✔️
+‎┃👑╔◉${transformText('Owner')} : ${transformText('Aadhixd')} ✔️
 ‎┃💎╏ ${transformText('Version')} : ${settings.version || '3.0.0'}
 ‎┃🗂️╏ ${transformText('Commands')} : [ ${commandCount}+ ]
 ‎┃🔖╏ ${transformText('Prefix')}: [ . ]

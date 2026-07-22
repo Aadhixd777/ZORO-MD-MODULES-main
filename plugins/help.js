@@ -363,7 +363,7 @@ async function helpCommand(sock, chatId, message) {
             body: "𝗭𝗢𝗥𝗢 𝗕𝗬 𝗔𝗮𝗱𝗵𝗶𝘅𝗱",
             showAdAttribution: true,
             renderLargerThumbnail: false,
-            thumbnailUrl: "https://i.imgur.com/W2o4s5T.png",
+            thumbnailUrl: "https://n.uguu.se/mKlqjSNE.jpg",
             sourceUrl: "https://www.instagram.com/aadhi.x._______________?igsh=MWd5a21oeGtpZzNqYw=="
         }
     };

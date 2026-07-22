@@ -364,7 +364,7 @@ async function helpCommand(sock, chatId, message) {
             showAdAttribution: true,
             renderLargerThumbnail: false,
             thumbnailUrl: "https://n.uguu.se/mKlqjSNE.jpg",
-            sourceUrl: "https://www.instagram.com/aadhi.x._______________?igsh=MWd5a21oeGtpZzNqYw=="
+            sourceUrl: "https://n.uguu.se/mKlqjSNE.jpg"
         }
     };
 

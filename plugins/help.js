@@ -2,6 +2,7 @@ const settings = require('../settings');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const axios = require('axios'); // Image Buffer fetch cheyyaan
 const { fontStyles, loadFontSettings } = require('../lib/fontTransformer');
 
 function countCommands() {
@@ -354,17 +355,26 @@ async function helpCommand(sock, chatId, message) {
 ‎│➽ .${transformText('repo')}
 ‎╰────────────────◇
 
-‎© *${transformText('POWERED BY XD BROTHERS AADHIXD')}*`;
+‎© *${transformText('POWERED BY XD BROTHERS AADHIXD X ROMEOXD')}*`;
 
-    // Green Verified Badge context setup with Instagram Profile URL
+    // Fetch Green Tick image as Buffer for proper thumbnail rendering
+    let thumbBuffer = null;
+    try {
+        const res = await axios.get('https://i.imgur.com/W2o4s5T.png', { responseType: 'arraybuffer' });
+        thumbBuffer = Buffer.from(res.data, 'utf-8');
+    } catch (err) {
+        console.error('Error fetching thumbnail:', err);
+    }
+
     const contextInfo = {
         externalAdReply: {
             title: "ZORO MD OFFICIAL BOT",
-            body: "𝗭𝗢𝗥𝗢 𝗕𝗬 𝗔𝗮𝗱𝗵𝗶𝘅𝗱",
+            body: "𝗭𝗢𝗥𝗢 𝗕𝗬 𝗔𝗮d𝗵𝗶𝘅𝗱",
             showAdAttribution: true,
             renderLargerThumbnail: false,
-            thumbnailUrl: "https://n.uguu.se/mKlqjSNE.jpg",
-            sourceUrl: "https://n.uguu.se/mKlqjSNE.jpg"
+            thumbnail: thumbBuffer, // Direct Buffer pass cheyyunnu
+            mediaType: 1,
+            sourceUrl: "https://www.instagram.com/aadhi.x._______________?igsh=MWd5a21oeGtpZzNqYw=="
         }
     };
 

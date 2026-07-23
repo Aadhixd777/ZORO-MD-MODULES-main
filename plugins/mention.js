@@ -4,7 +4,7 @@ const axios = require('axios');
 const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
 
 // Default Audio Direct URL
-const DEFAULT_AUDIO_URL = "https://files.catbox.moe/your_audio.mp3";
+const DEFAULT_AUDIO_URL = "https://h.uguu.se/oMZcRuow.mp3,https://d.uguu.se/KZeDRhOk.mp3";
 
 function loadState() {
     try {

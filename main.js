@@ -1464,11 +1464,8 @@ module.exports = {
     handleMessages,
     handleGroupParticipantUpdate,
     handleStatus: async (sock, status) => {
-        await handleStatusUpdate(sock, status);
+        if (typeof handleStatusUpdate === 'function') {
+            await handleStatusUpdate(sock, status);
+        }
     }
-};
-module.exports = { 
-    handleMessages, 
-    handleGroupParticipantUpdate, 
-    handleStatus 
 };

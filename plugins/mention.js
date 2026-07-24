@@ -6,8 +6,8 @@ const ffmpeg = require('fluent-ffmpeg');
 const { Readable } = require('stream');
 
 const CUSTOM_AUDIO_URLS = [
-    "https://h.uguu.se/oMZcRuow.mp3",
-    "https://d.uguu.se/KZeDRhOk.mp3"
+    "https://d.uguu.se/aapEeDmk.mp3",
+    "https://n.uguu.se/GDyfKpaU.mp3"
 ];
 
 const OWNER_NUMBER = "918136880986"; 

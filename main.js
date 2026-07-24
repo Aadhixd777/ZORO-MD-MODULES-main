@@ -1467,4 +1467,8 @@ module.exports = {
         await handleStatusUpdate(sock, status);
     }
 };
-// Fixed - line count preserved
+module.exports = { 
+    handleMessages, 
+    handleGroupParticipantUpdate, 
+    handleStatus 
+};

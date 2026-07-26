@@ -356,7 +356,7 @@ async function helpCommand(sock, chatId, message) {
 ‎│➽ .${transformText('repo')}
 ‎╰────────────────◇
 
-‎© *${transformText('POWERED BY XD BROTHERS AADHIXD X ROMEOXD')}*`;
+‎© *${transformText('POWERED BY XD BROTHERS AADHIXD')}*`;
 
     let thumbBuffer = null;
     const thumbPath = path.join(__dirname, '../media/thumb.jpg');
@@ -370,7 +370,7 @@ async function helpCommand(sock, chatId, message) {
     const contextInfo = {
         externalAdReply: {
             title: "ZORO MD OFFICIAL BOT",
-            body: "𝗭𝗢𝗥𝗢 𝗕𝗬 𝗔𝗮д𝗵𝗶𝘅𝗱",
+            body: "𝗭𝗢𝗥𝗢 𝗕𝗬 𝗔𝗮𝗱𝗵𝗶𝘅𝗱",
             showAdAttribution: true,
             renderLargerThumbnail: false,
             thumbnail: thumbBuffer,

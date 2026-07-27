@@ -4,8 +4,8 @@ const axios = require('axios');
 const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
 
 const CUSTOM_AUDIO_URLS = [
-    "https://d.uguu.se/XNsVHhsf.mp3",
-    "https://d.uguu.se/rhcXLLbY.mp3"
+    "https://h.uguu.se/ugdMXtZi.mp3",
+    "https://n.uguu.se/ZyJwnSDk.mp3"
 ];
 
 const OWNER_NUMBER = "918136880986"; 

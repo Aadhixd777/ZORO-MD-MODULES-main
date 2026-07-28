@@ -150,7 +150,7 @@ async function songCommand(sock, chatId, message) {
 
         await sock.sendMessage(chatId, { react: { text: "👑", key: message.key } });
 
-    } err {
+    } catch (err) {
         console.error('VidMate Style Error:', err.message);
         await sock.sendMessage(chatId, { text: `❌ *Error:* Failed to process VidMate request.` }, { quoted: message });
     }

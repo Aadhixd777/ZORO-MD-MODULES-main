@@ -4,102 +4,141 @@ const path = require('path');
 const FormData = require('form-data');
 const axios = require('axios');
 
-// Catbox.moe Permanent Upload Function
+/**
+ * Uploads a file to Catbox.moe and returns the permanent URL.
+ * @param {string} filePath - Local path of the file to upload.
+ * @returns {Promise<string>} - The uploaded file URL.
+ */
 async function catboxUpload(filePath) {
     try {
         const form = new FormData();
         form.append('reqtype', 'fileupload');
         form.append('fileToUpload', fs.createReadStream(filePath));
 
-        const res = await axios.post('https://catbox.moe/user/api.php', form, {
+        const response = await axios.post('https://catbox.moe/user/api.php', form, {
             headers: {
-                ...form.getHeaders(),
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-            }
+                ...form.getHeaders()
+            },
+            maxContentLength: Infinity,
+            maxBodyLength: Infinity
         });
-        return res.data;
-    } catch (e) {
-        throw new Error('Catbox upload failed: ' + (e.message || e));
+
+        return response.data;
+    } catch (error) {
+        console.error('[Catbox Upload Error]:', error.response?.data || error.message);
+        throw new Error('Catbox upload failed: ' + (error.message || error));
     }
 }
 
+/**
+ * Extracts media buffer and file extension from a WhatsApp message object.
+ * @param {Object} message - The WhatsApp message object.
+ * @returns {Promise<{buffer: Buffer, ext: string}|null>}
+ */
 async function getMediaBufferAndExt(message) {
-    const m = message.message || {};
-    if (m.imageMessage) {
-        const stream = await downloadContentFromMessage(m.imageMessage, 'image');
+    const content = message.message || {};
+
+    if (content.imageMessage) {
+        const stream = await downloadContentFromMessage(content.imageMessage, 'image');
         const chunks = [];
         for await (const chunk of stream) chunks.push(chunk);
         return { buffer: Buffer.concat(chunks), ext: '.jpg' };
     }
-    if (m.videoMessage) {
-        const stream = await downloadContentFromMessage(m.videoMessage, 'video');
+
+    if (content.videoMessage) {
+        const stream = await downloadContentFromMessage(content.videoMessage, 'video');
         const chunks = [];
         for await (const chunk of stream) chunks.push(chunk);
         return { buffer: Buffer.concat(chunks), ext: '.mp4' };
     }
-    if (m.audioMessage) {
-        const stream = await downloadContentFromMessage(m.audioMessage, 'audio');
+
+    if (content.audioMessage) {
+        const stream = await downloadContentFromMessage(content.audioMessage, 'audio');
         const chunks = [];
         for await (const chunk of stream) chunks.push(chunk);
         return { buffer: Buffer.concat(chunks), ext: '.mp3' };
     }
-    if (m.documentMessage) {
-        const stream = await downloadContentFromMessage(m.documentMessage, 'document');
+
+    if (content.documentMessage) {
+        const stream = await downloadContentFromMessage(content.documentMessage, 'document');
         const chunks = [];
         for await (const chunk of stream) chunks.push(chunk);
-        const fileName = m.documentMessage.fileName || 'file.bin';
+        const fileName = content.documentMessage.fileName || 'file.bin';
         const ext = path.extname(fileName) || '.bin';
         return { buffer: Buffer.concat(chunks), ext };
     }
-    if (m.stickerMessage) {
-        const stream = await downloadContentFromMessage(m.stickerMessage, 'sticker');
+
+    if (content.stickerMessage) {
+        const stream = await downloadContentFromMessage(content.stickerMessage, 'sticker');
         const chunks = [];
         for await (const chunk of stream) chunks.push(chunk);
         return { buffer: Buffer.concat(chunks), ext: '.webp' };
     }
+
     return null;
 }
 
+/**
+ * Extracts media from a quoted message if present.
+ * @param {Object} message - The WhatsApp message object containing contextInfo.
+ * @returns {Promise<{buffer: Buffer, ext: string}|null>}
+ */
 async function getQuotedMediaBufferAndExt(message) {
     const quoted = message.message?.extendedTextMessage?.contextInfo?.quotedMessage || null;
     if (!quoted) return null;
     return getMediaBufferAndExt({ message: quoted });
 }
 
+/**
+ * Main URL command handler to convert WhatsApp media to permanent Catbox link.
+ * @param {Object} sock - Baileys socket instance.
+ * @param {string} chatId - Target chat ID.
+ * @param {Object} message - Incoming message object.
+ */
 async function urlCommand(sock, chatId, message) {
     let tempPath = '';
     try {
         let media = await getMediaBufferAndExt(message);
-        if (!media) media = await getQuotedMediaBufferAndExt(message);
+        if (!media) {
+            media = await getQuotedMediaBufferAndExt(message);
+        }
 
         if (!media) {
-            await sock.sendMessage(chatId, { text: 'Send or reply to a media (image, video, audio, sticker, document) to get a URL.' }, { quoted: message });
+            await sock.sendMessage(chatId, { 
+                text: 'Send or reply to a media (image, video, audio, sticker, document) to get a URL.' 
+            }, { quoted: message });
             return;
         }
 
         const tempDir = path.join(__dirname, '../temp');
-        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+        if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+        }
+
         tempPath = path.join(tempDir, `${Date.now()}${media.ext}`);
         fs.writeFileSync(tempPath, media.buffer);
 
-        await sock.sendMessage(chatId, { text: '⏳ Uploading media, please wait…' }, { quoted: message });
+        await sock.sendMessage(chatId, { text: '⏳ Uploading media to Catbox, please wait…' }, { quoted: message });
 
-        // Permanent Catbox Upload
-        const url = await catboxUpload(tempPath);
+        const fileUrl = await catboxUpload(tempPath);
 
-        if (!url || typeof url !== 'string' || !url.startsWith('http')) {
-            await sock.sendMessage(chatId, { text: '❌ Failed to upload media.' }, { quoted: message });
+        if (!fileUrl || typeof fileUrl !== 'string' || !fileUrl.startsWith('http')) {
+            await sock.sendMessage(chatId, { text: '❌ Failed to upload media. Invalid response from server.' }, { quoted: message });
             return;
         }
 
-        await sock.sendMessage(chatId, { text: `✅ *Permanent URL:* ${url.trim()}` }, { quoted: message });
+        await sock.sendMessage(chatId, { text: `✅ *Permanent URL:* ${fileUrl.trim()}` }, { quoted: message });
     } catch (error) {
-        console.error('[URL] error:', error?.message || error);
+        console.error('[URL Command Error]:', error?.message || error);
         await sock.sendMessage(chatId, { text: '❌ Failed to convert media to URL.' }, { quoted: message });
     } finally {
         if (tempPath && fs.existsSync(tempPath)) {
             setTimeout(() => {
-                try { fs.unlinkSync(tempPath); } catch {}
+                try { 
+                    fs.unlinkSync(tempPath); 
+                } catch (err) {
+                    console.error('[Temp File Cleanup Error]:', err);
+                }
             }, 2000);
         }
     }

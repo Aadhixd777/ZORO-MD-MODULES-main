@@ -7,7 +7,6 @@ async function songCommand(sock, chatId, message) {
     let tempFilePath = null;
     let actualFilePath = null;
     
-    // ഉപയോക്താവ് നൽകിയ കമാൻഡ് ടെക്സ്റ്റ് സുരക്ഷിതമായി വേർതിരിച്ചെടുക്കുന്നു
     const fullText = message.message?.conversation || message.message?.extendedTextMessage?.text || message.message?.imageMessage?.caption || message.message?.videoMessage?.caption || '';
     const queryText = fullText.split(' ').slice(1).join(' ').trim();
 
@@ -21,7 +20,7 @@ async function songCommand(sock, chatId, message) {
         await sock.sendMessage(chatId, { react: { text: "⚡", key: message.key } });
 
         let processingMsg = await sock.sendMessage(chatId, { 
-            text: `🔍 *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐒𝐄𝐀𝐑𝐂𝐇𝐈НГ* 🔍\n\n» *Query:* \`${queryText}\`\n» *Status:* 📡 Connecting to YouTube via yt-dlp...` 
+            text: `🔍 *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐒𝐄𝐀𝐑𝐂𝐇𝐈𝐍𝐆* 🔍\n\n» *Query:* \`${queryText}\`\n» *Status:* 📡 Connecting to YouTube...` 
         }, { quoted: message });
 
         const searchResults = await yts(queryText);
@@ -40,7 +39,7 @@ async function songCommand(sock, chatId, message) {
         const uniqueId = `zoro_${Date.now()}`;
         tempFilePath = path.join(__dirname, `${uniqueId}.mp3`);
 
-        // പ്രധാന yt-dlp ഡൗൺലോഡ്
+        // Safe execution configuration for hosting servers
         await youtubedl(video.url, {
             extractAudio: true,
             audioFormat: 'mp3',
@@ -48,11 +47,7 @@ async function songCommand(sock, chatId, message) {
             output: tempFilePath,
             noCheckCertificates: true,
             noWarnings: true,
-            preferFreeFormats: true,
-            addHeader: [
-                'referer:https://www.youtube.com',
-                'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            ]
+            preferFreeFormats: true
         });
 
         const dirFiles = fs.readdirSync(__dirname);
@@ -73,7 +68,7 @@ async function songCommand(sock, chatId, message) {
         await sock.sendMessage(chatId, {
             audio: audioBuffer,
             mimetype: 'audio/mpeg',
-            fileName: `${video.title}.mp3`,
+            fileName: `${video.title.replace(/[\\/:*?"<>|]/g, '')}.mp3`,
             ptt: false
         }, { quoted: message });
 
@@ -87,7 +82,6 @@ async function songCommand(sock, chatId, message) {
     } catch (err) {
         console.error('Zoro MD Pro Song Error:', err.message);
         
-        // സെക്കൻഡറി ഫോൾബാക്ക് (Alternative Attempt) - `queryText` സുരക്ഷിതമായി ഉപയോഗിച്ചിരിക്കുന്നു
         try {
             await sock.sendMessage(chatId, { text: `⚠️ Initial method skipped, trying alternative high-speed stream...` }, { quoted: message });
             
@@ -112,7 +106,7 @@ async function songCommand(sock, chatId, message) {
                 await sock.sendMessage(chatId, {
                     audio: fs.readFileSync(finalBackupPath),
                     mimetype: 'audio/mpeg',
-                    fileName: `${video.title}.mp3`
+                    fileName: `${video.title.replace(/[\\/:*?"<>|]/g, '')}.mp3`
                 }, { quoted: message });
 
                 if (fs.existsSync(finalBackupPath)) fs.unlinkSync(finalBackupPath);

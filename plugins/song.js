@@ -6,21 +6,23 @@ async function songCommand(sock, chatId, message) {
         const fullText = message.message?.conversation || message.message?.extendedTextMessage?.text || message.message?.imageMessage?.caption || '';
         const incomingText = fullText.trim();
         
-        // Check if user is replying to the VidMate style menu (1 for Audio, 2 for Video)
-        const quotedMsg = message.message?.extendedTextMessage?.contextInfo;
+        // Check if the user replied to a message
+        const quotedContext = message.message?.extendedTextMessage?.contextInfo;
         
-        if (quotedMsg && (incomingText === '1' || incomingText === '2')) {
+        if (quotedContext && (incomingText === '1' || incomingText === '2')) {
             await sock.sendMessage(chatId, { react: { text: "⏳", key: message.key } });
             
-            const quotedText = quotedMsg.quotedMessage?.conversation || quotedMsg.quotedMessage?.extendedTextMessage?.text || '';
+            // Extract the title or query from the quoted message text/caption
+            const quotedText = quotedContext.quotedMessage?.conversation || quotedContext.quotedMessage?.extendedTextMessage?.text || quotedContext.quotedMessage?.imageMessage?.caption || '';
+            
             let targetQuery = "";
             const match = quotedText.match(/🎬 \*Title:\* (.+)/);
             if (match && match[1]) {
-                targetQuery = match[1].trim();
+                targetQuery = match[1].split('\n')[0].trim();
             }
 
             if (!targetQuery) {
-                return await sock.sendMessage(chatId, { text: "❌ Session expired! Please search again using .song <name>" }, { quoted: message });
+                return await sock.sendMessage(chatId, { text: "❌ Session expired or title not found! Please search again using .song <name>" }, { quoted: message });
             }
 
             const searchResults = await yts(targetQuery);
@@ -30,7 +32,6 @@ async function songCommand(sock, chatId, message) {
                 return await sock.sendMessage(chatId, { text: "❌ Could not find the media to download!" }, { quoted: message });
             }
 
-            // Fetch thumbnail for rich preview
             let thumbBuffer = null;
             try {
                 if (video.thumbnail) {
@@ -40,10 +41,9 @@ async function songCommand(sock, chatId, message) {
             } catch (e) {}
 
             if (incomingText === '1') {
-                // VidMate Style: Audio Download with Thumbnail & AdReply Context (Created by Aadhi XD)
+                // Audio Download (MP3)
                 await sock.sendMessage(chatId, { text: `📥 Downloading Audio (MP3) for *${video.title}*... Please wait.` }, { quoted: message });
 
-                // Direct lightweight stream/download fetch
                 const downloadApi = `https://api.vreden.web.id/api/ytmp3?url=${encodeURIComponent(video.url)}`;
                 let dlUrl = null;
                 try {
@@ -60,7 +60,6 @@ async function songCommand(sock, chatId, message) {
 
                 const safeTitle = (video.title || 'song').replace(/[\\/:*?"<>|]/g, '');
                 
-                // Sending Audio with Aadhi XD branding & Thumbnail Context
                 await sock.sendMessage(chatId, {
                     audio: audioBuffer,
                     mimetype: 'audio/mpeg',
@@ -82,7 +81,7 @@ async function songCommand(sock, chatId, message) {
                 return;
 
             } else if (incomingText === '2') {
-                // VidMate Style: Video Download (MP4)
+                // Video Download (MP4)
                 await sock.sendMessage(chatId, { text: `📥 Downloading Video (MP4) for *${video.title}*... Please wait.` }, { quoted: message });
 
                 const videoApi = `https://api.vreden.web.id/api/ytmp4?url=${encodeURIComponent(video.url)}`;
@@ -110,7 +109,7 @@ async function songCommand(sock, chatId, message) {
             }
         }
 
-        // VidMate Initial Search & Menu Flow
+        // Initial Search Flow (.song <name>)
         const queryText = fullText.split(' ').slice(1).join(' ').trim();
         if (!queryText) {
             return await sock.sendMessage(chatId, { 
@@ -127,7 +126,6 @@ async function songCommand(sock, chatId, message) {
             return await sock.sendMessage(chatId, { text: "❌ *Oops!* No results found on YouTube!" }, { quoted: message });
         }
 
-        // Fetch thumbnail image for the VidMate menu preview
         let thumbBuffer = null;
         try {
             if (video.thumbnail) {
@@ -136,7 +134,6 @@ async function songCommand(sock, chatId, message) {
             }
         } catch (e) {}
 
-        // VidMate Style Interactive Menu with Thumbnail Context & Aadhi XD Branding
         const vidmateMenuText = `📥 *𝐙𝐎𝐑𝐎-𝐌𝐃 VIDMATE DOWNLOADER* 📥
         
 🎬 *Title:* ${video.title}
@@ -151,7 +148,6 @@ async function songCommand(sock, chatId, message) {
 ---------------------------------------
 ✨ *Created by Aadhi XD*`;
 
-        // Send menu with image preview (VidMate style) if thumbnail exists, else text
         if (thumbBuffer) {
             await sock.sendMessage(chatId, {
                 image: thumbBuffer,

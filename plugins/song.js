@@ -7,23 +7,25 @@ async function songCommand(sock, chatId, message) {
     let tempFilePath = null;
     let actualFilePath = null;
     
+    // ഉപയോക്താവ് നൽകിയ കമാൻഡ് ടെക്സ്റ്റ് സുരക്ഷിതമായി വേർതിരിച്ചെടുക്കുന്നു
+    const fullText = message.message?.conversation || message.message?.extendedTextMessage?.text || message.message?.imageMessage?.caption || message.message?.videoMessage?.caption || '';
+    const queryText = fullText.split(' ').slice(1).join(' ').trim();
+
+    if (!queryText) {
+        return await sock.sendMessage(chatId, { 
+            text: '⭐ *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐌𝐔𝐒𝐈𝐂* ⭐\n\n❌ *Error:* Please provide a song name!\n💡 *Example:* `.song Faded`' 
+        }, { quoted: message });
+    }
+
     try {
-        const fullText = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
-        const text = fullText.split(' ').slice(1).join(' ');
-
-        if (!text) {
-            return await sock.sendMessage(chatId, { 
-                text: '⭐ *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐌𝐔𝐒𝐈𝐂* ⭐\n\n❌ *Error:* Please provide a song name!\n💡 *Example:* `.song Faded`' 
-            }, { quoted: message });
-        }
-
         await sock.sendMessage(chatId, { react: { text: "⚡", key: message.key } });
 
         let processingMsg = await sock.sendMessage(chatId, { 
-            text: `🔍 *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐒𝐄𝐀𝐑𝐂𝐇𝐈НГ* 🔍\n\n» *Query:* \`${text}\`\n» *Status:* 📡 Connecting to YouTube via yt-dlp...` 
+            text: `🔍 *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐒𝐄𝐀𝐑𝐂𝐇𝐈НГ* 🔍\n\n» *Query:* \`${queryText}\`\n» *Status:* 📡 Connecting to YouTube via yt-dlp...` 
         }, { quoted: message });
 
-        const { videos } = await yts(text);
+        const searchResults = await yts(queryText);
+        const videos = searchResults?.videos;
         if (!videos || videos.length === 0) {
             return await sock.sendMessage(chatId, { text: "❌ *Oops!* No songs found!" }, { quoted: message });
         }
@@ -38,7 +40,7 @@ async function songCommand(sock, chatId, message) {
         const uniqueId = `zoro_${Date.now()}`;
         tempFilePath = path.join(__dirname, `${uniqueId}.mp3`);
 
-        // Jarvis ബോട്ടുകൾ ഉപയോഗിക്കുന്നതുപോലെയുള്ള അഡ്വാൻസ്ഡ് yt-dlp ആർഗ്യുമെന്റ്സ്
+        // പ്രധാന yt-dlp ഡൗൺലോഡ്
         await youtubedl(video.url, {
             extractAudio: true,
             audioFormat: 'mp3',
@@ -53,7 +55,6 @@ async function songCommand(sock, chatId, message) {
             ]
         });
 
-        // ഡൗൺലോഡ് ആയ ഫയൽ സിസ്റ്റത്തിൽ കറക്റ്റ് ആയി കണ്ടെത്താൻ
         const dirFiles = fs.readdirSync(__dirname);
         const downloadedFile = dirFiles.find(file => file.startsWith(uniqueId));
 
@@ -86,12 +87,14 @@ async function songCommand(sock, chatId, message) {
     } catch (err) {
         console.error('Zoro MD Pro Song Error:', err.message);
         
-        // ഒരു കാരണവശാലും ഫെയിൽ ആകാതിരിക്കാൻ സെക്കൻഡ് അറ്റെപ്റ്റ് (Alternative yt-dlp flags)
+        // സെക്കൻഡറി ഫോൾബാക്ക് (Alternative Attempt) - `queryText` സുരക്ഷിതമായി ഉപയോഗിച്ചിരിക്കുന്നു
         try {
             await sock.sendMessage(chatId, { text: `⚠️ Initial method skipped, trying alternative high-speed stream...` }, { quoted: message });
             
-            const { videos } = await yts(text);
-            const video = videos[0];
+            const searchResults = await yts(queryText);
+            const video = searchResults?.videos?.[0];
+            if (!video) throw new Error('Backup search failed');
+
             const backupId = `backup_${Date.now()}`;
             const backupPath = path.join(__dirname, `${backupId}.mp3`);
 

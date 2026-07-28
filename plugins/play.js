@@ -19,74 +19,88 @@ async function playCommand(sock, chatId, message) {
         }, { quoted: message });
 
         let video;
+        let trackCover = null;
+        let finalQuery = searchQuery;
+
+        // Step 1: Try fetching official metadata using Deezer API for better search accuracy
         try {
-            if (searchQuery.includes('youtube.com') || searchQuery.includes('youtu.be')) {
-                const search = await yts(searchQuery);
-                video = search.videos[0] || search;
+            const deezerRes = await axios.get(`https://api.deezer.com/search?q=${encodeURIComponent(searchQuery)}`, { timeout: 10000 });
+            if (deezerRes.data && deezerRes.data.data && deezerRes.data.data.length > 0) {
+                const track = deezerRes.data.data[0];
+                finalQuery = `${track.title} ${track.artist.name}`;
+                trackCover = track.album?.cover_medium || null;
+            }
+        } catch (e) {
+            console.log('Deezer metadata lookup skipped, using raw search query...');
+        }
+
+        // Step 2: Search on YouTube using yt-search
+        try {
+            if (finalQuery.includes('youtube.com') || finalQuery.includes('youtu.be')) {
+                const search = await yts(finalQuery);
+                video = search.videos ? search.videos[0] : search;
             } else {
-                const search = await yts(searchQuery);
+                const search = await yts(finalQuery);
                 if (!search.videos || search.videos.length === 0) {
                     return await sock.sendMessage(chatId, { text: "❌ No songs found!" }, { quoted: message });
                 }
                 video = search.videos[0];
             }
+
+            if (!video || !video.url) {
+                return await sock.sendMessage(chatId, { text: "❌ Could not find a valid video for this query!" }, { quoted: message });
+            }
         } catch (e) {
-            console.log('yt-search failed:', e.message);
+            console.error('yt-search failed:', e.message);
             return await sock.sendMessage(chatId, { text: `❌ Search failed: ${e.message}` }, { quoted: message });
         }
 
         let audioBuffer = null;
 
-        // 🔥 WORKING MULTI-API FALLBACK SYSTEM
+        // Step 3: Multi-API Fallback System for robust audio downloading
         const downloadApis = [
             `https://api.vreden.web.id/api/ytmp3?url=${encodeURIComponent(video.url)}`,
             `https://api.agatz.xyz/api/ytmp3?url=${encodeURIComponent(video.url)}`,
             `https://api.dreaded.site/api/ytdl/video?url=${encodeURIComponent(video.url)}`
         ];
 
-        // 1. Working API 1
+        // Trying API 1
         try {
-            console.log('Trying Working API 1...');
             const res = await axios.get(downloadApis[0], { timeout: 20000 });
             const downloadUrl = res.data?.result?.download?.url || res.data?.result?.url || res.data?.url;
             if (downloadUrl) {
                 const audioRes = await axios.get(downloadUrl, { responseType: 'arraybuffer', timeout: 60000 });
                 audioBuffer = Buffer.from(audioRes.data);
-                console.log('✅ Working API 1 Success');
             }
         } catch (e) {
-            console.log('Working API 1 failed:', e.message);
+            console.log('API 1 failed, trying backup...');
         }
 
-        // 2. Working API 2 (Fallback)
+        // Trying API 2 (Fallback)
         if (!audioBuffer) {
             try {
-                console.log('Trying Working API 2...');
                 const res = await axios.get(downloadApis[1], { timeout: 20000 });
                 const downloadUrl = res.data?.data?.downloadUrl || res.data?.result?.downloadUrl || res.data?.data?.url;
                 if (downloadUrl) {
                     const audioRes = await axios.get(downloadUrl, { responseType: 'arraybuffer', timeout: 60000 });
                     audioBuffer = Buffer.from(audioRes.data);
-                    console.log('✅ Working API 2 Success');
                 }
             } catch (e) {
-                console.log('Working API 2 failed:', e.message);
+                console.log('API 2 failed, trying backup...');
             }
         }
 
-        // 3. Working API 3 (Fallback)
+        // Trying API 3 (Fallback)
         if (!audioBuffer) {
             try {
-                console.log('Trying Working API 3...');
                 const res = await axios.get(downloadApis[2], { timeout: 20000 });
                 const downloadUrl = res.data?.result?.downloadUrl || res.data?.result?.audio;
                 if (downloadUrl) {
                     const audioRes = await axios.get(downloadUrl, { responseType: 'arraybuffer', timeout: 60000 });
                     audioBuffer = Buffer.from(audioRes.data);
-                    console.log('✅ Working API 3 Success');
                 }
             } catch (e) {
-                console.log('Working API 3 failed:', e.message);
+                console.log('API 3 failed.');
             }
         }
 
@@ -96,21 +110,24 @@ async function playCommand(sock, chatId, message) {
             }, { quoted: message });
         }
 
-        // Size Limit - Max 15MB
+        // Validate file size limit (Max 15MB for WhatsApp)
         if (audioBuffer.length > 15 * 1024 * 1024) {
             return await sock.sendMessage(chatId, { 
                 text: `❌ File too large (${(audioBuffer.length/1024/1024).toFixed(2)} MB)\nMax 15MB allowed for WhatsApp. Try a shorter song!` 
             }, { quoted: message });
         }
 
-        // Fetch Thumbnail
+        // Step 4: Fetch thumbnail safely
         let thumbBuffer = null;
         try {
-            if (video.thumbnail) {
-                const thumbRes = await axios.get(video.thumbnail, { responseType: 'arraybuffer', timeout: 10000 });
+            const imgUrl = trackCover || video.thumbnail;
+            if (imgUrl) {
+                const thumbRes = await axios.get(imgUrl, { responseType: 'arraybuffer', timeout: 10000 });
                 thumbBuffer = Buffer.from(thumbRes.data);
             }
-        } catch {}
+        } catch (err) {
+            console.log('Thumbnail fetch failed, skipping...');
+        }
 
         const adReplyContext = {
             externalAdReply: {
@@ -123,12 +140,12 @@ async function playCommand(sock, chatId, message) {
             }
         };
 
-        // Send Audio
+        // Step 5: Send final audio message to chat
         await sock.sendMessage(chatId, {
             audio: audioBuffer,
             mimetype: "audio/mpeg",
             ptt: false,
-            fileName: `${video.title || 'song'}.mp3`,
+            fileName: `${video.title ? video.title.replace(/[\/\\?%*:|"<>]/g, '') : 'song'}.mp3`,
             contextInfo: adReplyContext
         }, { quoted: message });
 

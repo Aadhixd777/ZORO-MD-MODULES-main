@@ -13,7 +13,8 @@ async function catboxUpload(filePath) {
     try {
         const form = new FormData();
         form.append('reqtype', 'fileupload');
-        form.append('fileToUpload', fs.createReadStream(filePath));
+        // ഫയലിന്റെ പേര് കൂടി ഇവിടെ നൽകിയിരിക്കുന്നു (412 എറർ ഒഴിവാക്കാൻ ഇത് സഹായിക്കും)
+        form.append('fileToUpload', fs.createReadStream(filePath), path.basename(filePath));
 
         const response = await axios.post('https://catbox.moe/user/api.php', form, {
             headers: {

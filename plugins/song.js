@@ -5,6 +5,8 @@ const path = require('path');
 
 async function songCommand(sock, chatId, message) {
     let tempFilePath = null;
+    let actualFilePath = null;
+    
     try {
         const fullText = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
         const text = fullText.split(' ').slice(1).join(' ');
@@ -18,7 +20,7 @@ async function songCommand(sock, chatId, message) {
         await sock.sendMessage(chatId, { react: { text: "⚡", key: message.key } });
 
         let processingMsg = await sock.sendMessage(chatId, { 
-            text: `🔍 *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐒𝐄𝐀𝐑𝐂𝐇𝐈𝐍𝐆* 🔍\n\n» *Query:* \`${text}\`\n» *Status:* 📡 Connecting to YouTube...` 
+            text: `🔍 *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐒𝐄𝐀𝐑𝐂𝐇𝐈НГ* 🔍\n\n» *Query:* \`${text}\`\n» *Status:* 📡 Connecting to YouTube via yt-dlp...` 
         }, { quoted: message });
 
         const { videos } = await yts(text);
@@ -29,29 +31,38 @@ async function songCommand(sock, chatId, message) {
         const video = videos[0];
 
         await sock.sendMessage(chatId, { 
-            text: `🎵 *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐌𝐔𝐒𝐈𝐂* 🎵\n\n📝 *Title:* ${video.title}\n📥 *Status:* ⚡ Downloading via yt-dlp...`,
+            text: `🎵 *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐌𝐔𝐒𝐈𝐂* 🎵\n\n📝 *Title:* ${video.title}\n📥 *Status:* ⚡ Downloading high-quality MP3...`,
             edit: processingMsg.key
         });
 
-        // Unique temp file path for downloading audio securely
-        tempFilePath = path.join(__dirname, `temp_${Date.now()}.mp3`);
+        const uniqueId = `zoro_${Date.now()}`;
+        tempFilePath = path.join(__dirname, `${uniqueId}.mp3`);
 
-        // Using youtube-dl-exec (yt-dlp wrapper) for robust extraction
+        // Jarvis ബോട്ടുകൾ ഉപയോഗിക്കുന്നതുപോലെയുള്ള അഡ്വാൻസ്ഡ് yt-dlp ആർഗ്യുമെന്റ്സ്
         await youtubedl(video.url, {
             extractAudio: true,
             audioFormat: 'mp3',
+            audioQuality: '0',
             output: tempFilePath,
             noCheckCertificates: true,
             noWarnings: true,
             preferFreeFormats: true,
-            addHeader: ['referer:youtube.com', 'user-agent:googlebot']
+            addHeader: [
+                'referer:https://www.youtube.com',
+                'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            ]
         });
 
-        if (!fs.existsSync(tempFilePath)) {
-            throw new Error('Audio extraction failed.');
+        // ഡൗൺലോഡ് ആയ ഫയൽ സിസ്റ്റത്തിൽ കറക്റ്റ് ആയി കണ്ടെത്താൻ
+        const dirFiles = fs.readdirSync(__dirname);
+        const downloadedFile = dirFiles.find(file => file.startsWith(uniqueId));
+
+        if (!downloadedFile) {
+            throw new Error('yt-dlp failed to generate output file.');
         }
 
-        const audioBuffer = fs.readFileSync(tempFilePath);
+        actualFilePath = path.join(__dirname, downloadedFile);
+        const audioBuffer = fs.readFileSync(actualFilePath);
 
         await sock.sendMessage(chatId, { 
             text: `🚀 *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐔𝐏𝐋𝐎𝐀𝐃𝐈𝐍𝐆* 🚀\n\n» *Song:* ${video.title}\n» *Status:* 📤 Pushing audio to chat...`,
@@ -61,25 +72,60 @@ async function songCommand(sock, chatId, message) {
         await sock.sendMessage(chatId, {
             audio: audioBuffer,
             mimetype: 'audio/mpeg',
+            fileName: `${video.title}.mp3`,
             ptt: false
         }, { quoted: message });
 
         await sock.sendMessage(chatId, { 
-            text: `✅ *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐌𝐔𝐒𝐈𝐂 𝐃𝐄ЛИВЕРЕD* ✅\n\n🎶 *${video.title}*`, 
+            text: `✅ *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐌𝐔𝐒𝐈𝐂 𝐃𝐄𝐋𝐈𝐕𝐄𝐑𝐄𝐃* ✅\n\n🎶 *${video.title}*`, 
             edit: processingMsg.key 
         });
         
         await sock.sendMessage(chatId, { react: { text: "👑", key: message.key } });
 
     } catch (err) {
-        console.error('Zoro MD Song Error:', err.message);
+        console.error('Zoro MD Pro Song Error:', err.message);
+        
+        // ഒരു കാരണവശാലും ഫെയിൽ ആകാതിരിക്കാൻ സെക്കൻഡ് അറ്റെപ്റ്റ് (Alternative yt-dlp flags)
         try {
-            await sock.sendMessage(chatId, { text: `❌ *Error:* Could not download this song. Please try again.` }, { quoted: message });
-        } catch (e) {}
+            await sock.sendMessage(chatId, { text: `⚠️ Initial method skipped, trying alternative high-speed stream...` }, { quoted: message });
+            
+            const { videos } = await yts(text);
+            const video = videos[0];
+            const backupId = `backup_${Date.now()}`;
+            const backupPath = path.join(__dirname, `${backupId}.mp3`);
+
+            await youtubedl(video.url, {
+                format: 'bestaudio',
+                output: backupPath,
+                noCheckCertificates: true
+            });
+
+            const backupFiles = fs.readdirSync(__dirname);
+            const foundBackup = backupFiles.find(file => file.startsWith(backupId));
+
+            if (foundBackup) {
+                const finalBackupPath = path.join(__dirname, foundBackup);
+                await sock.sendMessage(chatId, {
+                    audio: fs.readFileSync(finalBackupPath),
+                    mimetype: 'audio/mpeg',
+                    fileName: `${video.title}.mp3`
+                }, { quoted: message });
+
+                if (fs.existsSync(finalBackupPath)) fs.unlinkSync(finalBackupPath);
+                return;
+            }
+        } catch (secondaryErr) {
+            console.error('Secondary Fallback Also Failed:', secondaryErr.message);
+        }
+
+        await sock.sendMessage(chatId, { text: `❌ *Error:* Failed to process audio stream. Please check terminal logs.` }, { quoted: message });
     } finally {
-        // Clean up temp file safely
         if (tempFilePath && fs.existsSync(tempFilePath)) {
             try { fs.unlinkSync(tempFilePath); } catch (e) {}
+        }
+        if (actualFilePath && fs.existsSync(actualFilePath)) {
+            try { fs.unlinkSync(actualFilePath); } catch (e) {}
         }
     }
 }

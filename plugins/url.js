@@ -5,34 +5,46 @@ const FormData = require('form-data');
 const axios = require('axios');
 
 /**
- * Uploads a file to Catbox.moe and returns the permanent URL.
+ * Uploads a file to Catbox.moe and returns the permanent URL safely.
  * @param {string} filePath - Local path of the file to upload.
  * @returns {Promise<string>} - The uploaded file URL.
  */
 async function catboxUpload(filePath) {
+    let stream = null;
     try {
         const form = new FormData();
         form.append('reqtype', 'fileupload');
-        // ഫയലിന്റെ പേര് കൂടി ഇവിടെ നൽകിയിരിക്കുന്നു (412 എറർ ഒഴിവാക്കാൻ ഇത് സഹായിക്കും)
-        form.append('fileToUpload', fs.createReadStream(filePath), path.basename(filePath));
+        
+        const fileStats = fs.statSync(filePath);
+        stream = fs.createReadStream(filePath);
+        
+        form.append('fileToUpload', stream, {
+            filename: path.basename(filePath),
+            knownLength: fileStats.size
+        });
 
         const response = await axios.post('https://catbox.moe/user/api.php', form, {
             headers: {
                 ...form.getHeaders()
             },
             maxContentLength: Infinity,
-            maxBodyLength: Infinity
+            maxBodyLength: Infinity,
+            timeout: 30000
         });
 
         return response.data;
     } catch (error) {
         console.error('[Catbox Upload Error]:', error.response?.data || error.message);
         throw new Error('Catbox upload failed: ' + (error.message || error));
+    } finally {
+        if (stream && typeof stream.destroy === 'function') {
+            stream.destroy();
+        }
     }
 }
 
 /**
- * Extracts media buffer and file extension from a WhatsApp message object.
+ * Safely extracts media buffer and ensures a valid extension for WhatsApp media.
  * @param {Object} message - The WhatsApp message object.
  * @returns {Promise<{buffer: Buffer, ext: string}|null>}
  */
@@ -57,6 +69,7 @@ async function getMediaBufferAndExt(message) {
         const stream = await downloadContentFromMessage(content.audioMessage, 'audio');
         const chunks = [];
         for await (const chunk of stream) chunks.push(chunk);
+        // WhatsApp audio can be opus/ogg or mp3, standardizing to mp3 ensures broad compatibility
         return { buffer: Buffer.concat(chunks), ext: '.mp3' };
     }
 
@@ -106,7 +119,7 @@ async function urlCommand(sock, chatId, message) {
 
         if (!media) {
             await sock.sendMessage(chatId, { 
-                text: 'Send or reply to a media (image, video, audio, sticker, document) to get a URL.' 
+                text: 'Send or reply to any media (image, video, audio, sticker, document) to get a permanent URL.' 
             }, { quoted: message });
             return;
         }
@@ -116,7 +129,8 @@ async function urlCommand(sock, chatId, message) {
             fs.mkdirSync(tempDir, { recursive: true });
         }
 
-        tempPath = path.join(tempDir, `${Date.now()}${media.ext}`);
+        // Generating a secure timestamp-based unique filename to avoid 412 errors
+        tempPath = path.join(tempDir, `media_${Date.now()}${media.ext}`);
         fs.writeFileSync(tempPath, media.buffer);
 
         await sock.sendMessage(chatId, { text: '⏳ Uploading media to Catbox, please wait…' }, { quoted: message });

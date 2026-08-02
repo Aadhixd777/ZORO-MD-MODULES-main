@@ -95,7 +95,7 @@ async function urlCommand(sock, chatId, message) {
 
         if (!media) {
             await sock.sendMessage(chatId, { 
-                text: '❌ Reply to an Image/Video/Audio' 
+                text: '❌ Please reply to an Image, Video, Audio, Document or Sticker to get a permanent URL.' 
             }, { quoted: message });
             return;
         }
@@ -114,10 +114,11 @@ async function urlCommand(sock, chatId, message) {
 
         try { await sock.sendMessage(chatId, { react: { text: "✅", key: message.key } }); } catch {}
 
-        await sock.sendMessage(chatId, { text: mediaUrl }, { quoted: message });
+        await sock.sendMessage(chatId, { text: `✅ *Permanent URL:* ${mediaUrl}` }, { quoted: message });
     } catch (error) {
+        console.error('Error in url command:', error);
         try { await sock.sendMessage(chatId, { react: { text: "❌", key: message.key } }); } catch {}
-        await sock.sendMessage(chatId, { text: 'An error occurred while uploading the media.' }, { quoted: message });
+        await sock.sendMessage(chatId, { text: '❌ Failed to upload media and get permanent URL.' }, { quoted: message });
     } finally {
         if (tempPath && fs.existsSync(tempPath)) {
             setTimeout(() => {

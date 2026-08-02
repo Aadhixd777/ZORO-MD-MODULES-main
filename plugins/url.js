@@ -11,24 +11,28 @@ async function handleMediaUpload(filePath) {
         const fileStats = fs.statSync(filePath);
         stream = fs.createReadStream(filePath);
         
-        form.append("file", stream, {
+        form.append("reqtype", "fileupload");
+        form.append("fileToUpload", stream, {
             filename: path.basename(filePath),
             knownLength: fileStats.size
         });
 
-        const response = await axios.post("https://telegra.ph/upload", form, {
-            headers: { ...form.getHeaders() },
+        const response = await axios.post("https://catbox.moe/user/api.php", form, {
+            headers: {
+                ...form.getHeaders()
+            },
             maxContentLength: Infinity,
             maxBodyLength: Infinity,
-            timeout: 45000
+            timeout: 60000
         });
 
-        if (response.data && Array.isArray(response.data) && response.data[0]?.src) {
-            return "https://telegra.ph" + response.data[0].src;
+        if (response.data && typeof response.data === 'string' && response.data.startsWith('http')) {
+            return response.data.trim();
         }
-        throw new Error('Upload failed');
+        
+        throw new Error('Invalid response from server');
     } catch (error) {
-        throw new Error(error.message);
+        throw new Error('Upload failed: ' + (error.response?.data || error.message));
     } finally {
         if (stream && typeof stream.destroy === 'function') {
             stream.destroy();
@@ -95,7 +99,7 @@ async function urlCommand(sock, chatId, message) {
 
         if (!media) {
             await sock.sendMessage(chatId, { 
-                text: '❌ Please reply to an Image, Video, Audio, Document or Sticker to get a permanent URL.' 
+                text: '❌ Please send or reply to any media (Image, Video, Audio, Document, Sticker) to get a permanent URL.' 
             }, { quoted: message });
             return;
         }

@@ -113,7 +113,7 @@ async function songCommand(sock, chatId, message) {
         const queryText = fullText.split(' ').slice(1).join(' ').trim();
         if (!queryText) {
             return await sock.sendMessage(chatId, { 
-                text: '⭐ *𝐙𝐎𝐑𝐎-𝐌𝐃 VIDMATE DOWNLOADER* ⭐\n\n❌ *Error:* Please provide a song name!\n💡 *Example:* `.song Faded`' 
+                text: '⭐ *𝗭𝗢𝗥𝗢-𝗠𝗗 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥* ⭐\n\n❌ *Error:* Please provide a song name!\n💡 *Example:* `.song Faded`' 
             }, { quoted: message });
         }
 
@@ -137,7 +137,7 @@ async function songCommand(sock, chatId, message) {
             }
         } catch (e) {}
 
-        const vidmateMenuText = `┌  📥 *𝐙𝐎𝐑𝐎-𝐌𝐃 VIDMATE DOWNLOADER* 📥
+        const vidmateMenuText = `┌  📥 *𝗭𝗢𝗥𝗢-𝗠𝗗 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥* 📥
 │
 ├  🎬 *Title:* ${video.title}
 ├  ⏱️ *Duration:* ${video.timestamp}

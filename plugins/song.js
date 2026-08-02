@@ -1,18 +1,18 @@
 const yts = require('yt-search');
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 
 async function songCommand(sock, chatId, message) {
     try {
         const fullText = message.message?.conversation || message.message?.extendedTextMessage?.text || message.message?.imageMessage?.caption || '';
         const incomingText = fullText.trim();
         
-        // Check if the user replied to a message
         const quotedContext = message.message?.extendedTextMessage?.contextInfo;
         
         if (quotedContext && (incomingText === '1' || incomingText === '2')) {
             await sock.sendMessage(chatId, { react: { text: "⏳", key: message.key } });
             
-            // Extract text/caption from the quoted message safely, handling images and standard messages
             const quotedMsg = quotedContext.quotedMessage;
             const quotedText = quotedMsg?.conversation || 
                                quotedMsg?.extendedTextMessage?.text || 
@@ -20,7 +20,6 @@ async function songCommand(sock, chatId, message) {
                                quotedMsg?.videoMessage?.caption || 
                                quotedMsg?.documentMessage?.caption || '';
 
-            // Extract YouTube link directly or fallback to searching the message object
             let targetUrl = null;
             const linkMatch = quotedText.match(/(https?:\/\/[^\s]+)/);
             if (linkMatch) {
@@ -35,102 +34,100 @@ async function songCommand(sock, chatId, message) {
                 return await sock.sendMessage(chatId, { text: "❌ Session expired or link not found! Please search again using .song <name>" }, { quoted: message });
             }
 
-            if (incomingText === '1') {
-                // Audio Download (MP3)
-                await sock.sendMessage(chatId, { text: `📥 Downloading Audio (MP3)... Please wait.` }, { quoted: message });
+            function getYouTubeId(url) {
+                const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+                return match ? match[1] : null;
+            }
 
-                // Alternative reliable APIs fallback chain
-                const apis = [
-                    `https://api.vreden.web.id/api/ytmp3?url=${encodeURIComponent(targetUrl)}`,
-                    `https://deliriussapi-oficial.vercel.app/download/ytmp3?url=${encodeURIComponent(targetUrl)}`
-                ];
+            const videoId = getYouTubeId(targetUrl);
+            if (!videoId) {
+                return await sock.sendMessage(chatId, { text: "❌ Invalid YouTube URL!" }, { quoted: message });
+            }
+
+            const RAPID_API_KEY = '59660ea980msh58bb403149b4410p1d66b6jsn68ba86313226'; 
+            const RAPID_API_HOST = 'youtube-mp36.p.rapidapi.com';
+
+            let thumbBuffer = null;
+            const thumbPath = path.join(__dirname, '../media/thumb.jpg');
+            if (fs.existsSync(thumbPath)) {
+                thumbBuffer = fs.readFileSync(thumbPath);
+            }
+
+            const contextInfo = {
+                externalAdReply: {
+                    title: "ZORO MD MUSIC DOWNLOADER",
+                    body: "🎵 Created by Aadhixd",
+                    showAdAttribution: true,
+                    renderLargerThumbnail: false,
+                    thumbnail: thumbBuffer,
+                    mediaType: 1,
+                    sourceUrl: "https://www.instagram.com/aadhi.x._______________?igsh=MWd5a21oeGtpZzNqYw=="
+                }
+            };
+
+            if (incomingText === '1') {
+                await sock.sendMessage(chatId, { text: `📥 Downloading Audio (MP3) via RapidAPI... Please wait.` }, { quoted: message });
 
                 let dlUrl = null;
-                for (let api of apis) {
-                    try {
-                        const res = await axios.get(api, { timeout: 25000 });
-                        dlUrl = res.data?.result?.download?.url || res.data?.result?.url || res.data?.data?.dl;
-                        if (dlUrl) break;
-                    } catch (e) {
-                        continue;
-                    }
+                try {
+                    const response = await axios.get(`https://${RAPID_API_HOST}/dl`, {
+                        params: { id: videoId },
+                        headers: {
+                            'X-RapidAPI-Key': RAPID_API_KEY,
+                            'X-RapidAPI-Host': RAPID_API_HOST
+                        },
+                        timeout: 25000
+                    });
+                    dlUrl = response.data?.link || response.data?.download || response.data?.url;
+                } catch (e) {
+                    console.error('RapidAPI Error:', e.message);
                 }
 
                 if (!dlUrl) {
-                    return await sock.sendMessage(chatId, { text: "❌ Audio download failed. All APIs are currently busy. Try again later." }, { quoted: message });
+                    return await sock.sendMessage(chatId, { text: "❌ Audio download failed from RapidAPI." }, { quoted: message });
                 }
 
                 const audioRes = await axios.get(dlUrl, { responseType: 'arraybuffer', timeout: 60000 });
                 const audioBuffer = Buffer.from(audioRes.data);
-                
-                // Fetch thumbnail for external ad reply
-                let thumbBuffer = null;
-                try {
-                    const searchRes = await yts(targetUrl);
-                    const vInfo = searchRes?.videos?.[0];
-                    if (vInfo?.thumbnail) {
-                        const tRes = await axios.get(vInfo.thumbnail, { responseType: 'arraybuffer', timeout: 8000 });
-                        thumbBuffer = Buffer.from(tRes.data);
-                    }
-                } catch (e) {}
 
                 await sock.sendMessage(chatId, {
                     audio: audioBuffer,
                     mimetype: 'audio/mpeg',
                     fileName: `song.mp3`,
                     ptt: false,
-                    contextInfo: {
-                        externalAdReply: {
-                            title: 'Zoro MD Music Download',
-                            body: '🎵 Created by Aadhi XD',
-                            thumbnail: thumbBuffer,
-                            mediaType: 1,
-                            sourceUrl: targetUrl,
-                            showAdAttribution: true
-                        }
-                    }
+                    contextInfo: contextInfo
                 }, { quoted: message });
 
-                await sock.sendMessage(chatId, { react: { text: "🤍", key: message.key } });
+                await sock.sendMessage(chatId, { react: { text: "👑", key: message.key } });
                 return;
 
             } else if (incomingText === '2') {
-                // Video Download (MP4)
                 await sock.sendMessage(chatId, { text: `📥 Downloading Video (MP4)... Please wait.` }, { quoted: message });
 
-                const videoApis = [
-                    `https://api.vreden.web.id/api/ytmp4?url=${encodeURIComponent(targetUrl)}`,
-                    `https://deliriussapi-oficial.vercel.app/download/ytmp4?url=${encodeURIComponent(targetUrl)}`
-                ];
-
+                const videoApi = `https://api.siputzx.my.id/api/s/ytmp4?url=${encodeURIComponent(targetUrl)}`;
                 let videoDlUrl = null;
-                for (let api of videoApis) {
-                    try {
-                        const res = await axios.get(api, { timeout: 25000 });
-                        videoDlUrl = res.data?.result?.download?.url || res.data?.result?.url || res.data?.data?.dl;
-                        if (videoDlUrl) break;
-                    } catch (e) {
-                        continue;
-                    }
-                }
+                try {
+                    const res = await axios.get(videoApi, { timeout: 20000 });
+                    videoDlUrl = res.data?.data?.dl || res.data?.result?.download?.url || res.data?.result?.url;
+                } catch (e) {}
 
                 if (!videoDlUrl) {
-                    return await sock.sendMessage(chatId, { text: "❌ Video download failed. All APIs are currently busy. Try again later." }, { quoted: message });
+                    return await sock.sendMessage(chatId, { text: "❌ Video download failed." }, { quoted: message });
                 }
 
                 await sock.sendMessage(chatId, {
                     video: { url: videoDlUrl },
                     mimetype: 'video/mp4',
-                    caption: `🎬 *Downloaded via Zoro MD*\n✨ *Created by Aadhi XD*`,
-                    fileName: `video.mp4`
+                    caption: `🎬 *Downloaded via Zoro MD*\n✨ *Created by Aadhixd*`,
+                    fileName: `video.mp4`,
+                    contextInfo: contextInfo
                 }, { quoted: message });
 
-                await sock.sendMessage(chatId, { react: { text: "🤍", key: message.key } });
+                await sock.sendMessage(chatId, { react: { text: "👑", key: message.key } });
                 return;
             }
         }
 
-        // Initial Search Flow (.song <name>)
         const queryText = fullText.split(' ').slice(1).join(' ').trim();
         if (!queryText) {
             return await sock.sendMessage(chatId, { 
@@ -153,29 +150,52 @@ async function songCommand(sock, chatId, message) {
                 const thumbRes = await axios.get(video.thumbnail, { responseType: 'arraybuffer', timeout: 8000 });
                 thumbBuffer = Buffer.from(thumbRes.data);
             }
-        } catch (e) {}
+        } catch (e) {
+            const thumbPath = path.join(__dirname, '../media/thumb.jpg');
+            if (fs.existsSync(thumbPath)) {
+                thumbBuffer = fs.readFileSync(thumbPath);
+            }
+        }
 
-        const vidmateMenuText = `📥 *𝐙𝐎𝐑𝐎-𝐌𝐃 VIDMATE DOWNLOADER* 📥
-        
-🎬 *Title:* ${video.title}
-⏱️ *Duration:* ${video.timestamp}
-👀 *Views:* ${video.views}
-🔗 *Link:* ${video.url}
+        const vidmateMenuText = `┌  📥 *𝐙𝐎𝐑𝐎-𝐌𝐃 VIDMATE DOWNLOADER* 📥
+│
+├  🎬 *Title:* ${video.title}
+├  ⏱️ *Duration:* ${video.timestamp}
+├  👀 *Views:* ${video.views}
+├  🔗 *Link:* ${video.url}
+│
+---------------------------------------
+│  👇 *Reply to this message with:*
+│  *1️⃣* 🎵 Audio (MP3 Format)
+│  *2️⃣* 🎥 Video (MP4 Format)
+└─────────────────────────────────────
+│  © Owner & Developed by 👑
+│  Aadhixd ⚡
+└─────────────────────────────────────`;
 
----------------------------------------
-👇 *Reply to this message with:*
-*1️⃣* 🎵 Audio (MP3 Format)
-*2️⃣* 🎥 Video (MP4 Format)
----------------------------------------
-🤍 *Created by Aadhi XD*`;
+        const menuContextInfo = {
+            externalAdReply: {
+                title: "ZORO MD VIDMATE DOWNLOADER",
+                body: "𝗭𝗢𝗥𝗢 𝗕𝗬 𝗔𝗮𝗱𝗵𝗶𝘅𝗱",
+                showAdAttribution: true,
+                renderLargerThumbnail: false,
+                thumbnail: thumbBuffer,
+                mediaType: 1,
+                sourceUrl: "https://www.instagram.com/aadhi.x._______________?igsh=MWd5a21oeGtpZzNqYw=="
+            }
+        };
 
         if (thumbBuffer) {
             await sock.sendMessage(chatId, {
                 image: thumbBuffer,
-                caption: vidmateMenuText
+                caption: vidmateMenuText,
+                contextInfo: menuContextInfo
             }, { quoted: message });
         } else {
-            await sock.sendMessage(chatId, { text: vidmateMenuText }, { quoted: message });
+            await sock.sendMessage(chatId, { 
+                text: vidmateMenuText,
+                contextInfo: menuContextInfo
+            }, { quoted: message });
         }
 
         await sock.sendMessage(chatId, { react: { text: "👑", key: message.key } });

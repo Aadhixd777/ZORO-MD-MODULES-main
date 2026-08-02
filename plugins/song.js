@@ -149,8 +149,7 @@ async function songCommand(sock, chatId, message) {
 │  *1️⃣* 🎵 Audio (MP3 Format)
 │  *2️⃣* 🎥 Video (MP4 Format)
 └─────────────────────────────────────
-│  © Owner & Developed by 👑
-│  Aadhixd ⚡
+│  > *© 𝗢𝘄𝗻𝗲𝗿 & 𝗗𝗲𝘃𝗲𝗹𝗼𝗽𝗲𝗱 𝗯𝘆 👑 𝗔𝗮𝗱𝗵𝗶𝘅𝗱 ⚡*
 └─────────────────────────────────────`;
 
         if (imageToUse) {

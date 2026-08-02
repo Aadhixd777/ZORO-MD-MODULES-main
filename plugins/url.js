@@ -1,59 +1,8 @@
 const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
 const fs = require('fs');
 const path = require('path');
-const FormData = require('form-data');
-const axios = require('axios');
+const { handleMediaUpload } = require("../lib");
 
-const CATBOX_LIMIT = 209715200; // 200MB limit
-
-/**
- * Uploads a file to Catbox safely.
- * @param {string} filePath - Local path of the file to upload.
- * @returns {Promise<string>} - The uploaded file URL.
- */
-async function uploadToCatbox(filePath) {
-    let stream = null;
-    try {
-        const fileStats = fs.statSync(filePath);
-        if (fileStats.size > CATBOX_LIMIT) {
-            throw new Error('File size exceeds 200MB limit.');
-        }
-
-        const form = new FormData();
-        form.append("reqtype", "fileupload");
-        stream = fs.createReadStream(filePath);
-        form.append("fileToUpload", stream, {
-            filename: path.basename(filePath),
-            knownLength: fileStats.size
-        });
-
-        const response = await axios.post("https://catbox.moe/user/api.php", form, {
-            headers: {
-                ...form.getHeaders(),
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-            },
-            maxContentLength: Infinity,
-            maxBodyLength: Infinity,
-            timeout: 45000
-        });
-
-        if (response.data && typeof response.data === 'string' && response.data.startsWith('http')) {
-            return response.data.trim();
-        }
-        throw new Error('Invalid response from Catbox server.');
-    } catch (error) {
-        console.error("Error uploading file to Catbox:", error.response?.data || error.message);
-        throw new Error('Catbox upload failed: ' + (error.message || error));
-    } finally {
-        if (stream && typeof stream.destroy === 'function') {
-            stream.destroy();
-        }
-    }
-}
-
-/**
- * Safely extracts media buffer and ensures a valid extension for WhatsApp media.
- */
 async function getMediaBufferAndExt(message) {
     const content = message.message || {};
 
@@ -103,9 +52,6 @@ async function getQuotedMediaBufferAndExt(message) {
     return getMediaBufferAndExt({ message: quoted });
 }
 
-/**
- * Main URL command handler
- */
 async function urlCommand(sock, chatId, message) {
     let tempPath = '';
     try {
@@ -116,10 +62,12 @@ async function urlCommand(sock, chatId, message) {
 
         if (!media) {
             await sock.sendMessage(chatId, { 
-                text: '⭐ *ZORO-MD URL* ⭐\n\n❌ Send or reply to any media (image, video, audio, sticker, document) to get a permanent URL.' 
+                text: '❌ Please send or reply to any media (Image, Video, Audio, Document, Sticker) to get a permanent URL.' 
             }, { quoted: message });
             return;
         }
+
+        try { await sock.sendMessage(chatId, { react: { text: "⏫", key: message.key } }); } catch {}
 
         const tempDir = path.join(__dirname, '../temp');
         if (!fs.existsSync(tempDir)) {
@@ -129,14 +77,15 @@ async function urlCommand(sock, chatId, message) {
         tempPath = path.join(tempDir, `media_${Date.now()}${media.ext}`);
         fs.writeFileSync(tempPath, media.buffer);
 
-        await sock.sendMessage(chatId, { text: '⏳ Uploading media to Catbox, please wait…' }, { quoted: message });
+        const mediaUrl = await handleMediaUpload(tempPath);
 
-        const fileUrl = await uploadToCatbox(tempPath);
+        try { await sock.sendMessage(chatId, { react: { text: "✅", key: message.key } }); } catch {}
 
-        await sock.sendMessage(chatId, { text: `✅ *Permanent URL:* ${fileUrl}` }, { quoted: message });
+        await sock.sendMessage(chatId, { text: `✅ *Permanent URL:* ${mediaUrl}` }, { quoted: message });
     } catch (error) {
-        console.error('[URL Command Error]:', error?.message || error);
-        await sock.sendMessage(chatId, { text: '❌ Failed to convert media to URL. Please try again later.' }, { quoted: message });
+        console.error('Error in url command:', error);
+        try { await sock.sendMessage(chatId, { react: { text: "❌", key: message.key } }); } catch {}
+        await sock.sendMessage(chatId, { text: '❌ Failed to upload media and get permanent URL.' }, { quoted: message });
     } finally {
         if (tempPath && fs.existsSync(tempPath)) {
             setTimeout(() => {

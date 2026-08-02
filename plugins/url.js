@@ -1,7 +1,40 @@
 const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
 const fs = require('fs');
 const path = require('path');
-const { handleMediaUpload } = require("../lib");
+const FormData = require('form-data');
+const axios = require('axios');
+
+async function handleMediaUpload(filePath) {
+    let stream = null;
+    try {
+        const form = new FormData();
+        const fileStats = fs.statSync(filePath);
+        stream = fs.createReadStream(filePath);
+        
+        form.append("file", stream, {
+            filename: path.basename(filePath),
+            knownLength: fileStats.size
+        });
+
+        const response = await axios.post("https://telegra.ph/upload", form, {
+            headers: { ...form.getHeaders() },
+            maxContentLength: Infinity,
+            maxBodyLength: Infinity,
+            timeout: 45000
+        });
+
+        if (response.data && Array.isArray(response.data) && response.data[0]?.src) {
+            return "https://telegra.ph" + response.data[0].src;
+        }
+        throw new Error('Upload failed');
+    } catch (error) {
+        throw new Error(error.message);
+    } finally {
+        if (stream && typeof stream.destroy === 'function') {
+            stream.destroy();
+        }
+    }
+}
 
 async function getMediaBufferAndExt(message) {
     const content = message.message || {};
@@ -62,7 +95,7 @@ async function urlCommand(sock, chatId, message) {
 
         if (!media) {
             await sock.sendMessage(chatId, { 
-                text: '❌ Please send or reply to any media (Image, Video, Audio, Document, Sticker) to get a permanent URL.' 
+                text: '❌ Reply to an Image/Video/Audio' 
             }, { quoted: message });
             return;
         }
@@ -81,11 +114,10 @@ async function urlCommand(sock, chatId, message) {
 
         try { await sock.sendMessage(chatId, { react: { text: "✅", key: message.key } }); } catch {}
 
-        await sock.sendMessage(chatId, { text: `✅ *Permanent URL:* ${mediaUrl}` }, { quoted: message });
+        await sock.sendMessage(chatId, { text: mediaUrl }, { quoted: message });
     } catch (error) {
-        console.error('Error in url command:', error);
         try { await sock.sendMessage(chatId, { react: { text: "❌", key: message.key } }); } catch {}
-        await sock.sendMessage(chatId, { text: '❌ Failed to upload media and get permanent URL.' }, { quoted: message });
+        await sock.sendMessage(chatId, { text: 'An error occurred while uploading the media.' }, { quoted: message });
     } finally {
         if (tempPath && fs.existsSync(tempPath)) {
             setTimeout(() => {

@@ -5,13 +5,14 @@ const FormData = require('form-data');
 const axios = require('axios');
 
 /**
- * Uploads a file to Telegra.ph and returns the permanent URL safely.
+ * Uploads a file safely using an alternative reliable file upload API.
  * @param {string} filePath - Local path of the file to upload.
  * @returns {Promise<string>} - The uploaded file URL.
  */
 async function uploadMediaFile(filePath) {
     let stream = null;
     try {
+        // Method: Using a highly reliable public file upload API (tmpfiles.org / qu.ax alternative)
         const form = new FormData();
         const fileStats = fs.statSync(filePath);
         stream = fs.createReadStream(filePath);
@@ -21,8 +22,7 @@ async function uploadMediaFile(filePath) {
             knownLength: fileStats.size
         });
 
-        // Using Telegra.ph upload endpoint (Very stable and permanent)
-        const response = await axios.post('https://telegra.ph/upload', form, {
+        const response = await axios.post('https://itzpire.com/tools/upload', form, {
             headers: {
                 ...form.getHeaders()
             },
@@ -31,39 +31,29 @@ async function uploadMediaFile(filePath) {
             timeout: 35000
         });
 
-        if (response.data && Array.isArray(response.data) && response.data[0]?.src) {
-            return 'https://telegra.ph' + response.data[0].src;
+        if (response.data && response.data.status === 'success' && response.data.data?.url) {
+            return response.data.data.url;
         }
+
+        // Secondary fallback to another stable uploader (File.io)
+        if (stream && typeof stream.destroy === 'function') stream.destroy();
         
-        // Fallback to Catbox using simpler endpoint if telegraph returns different format
-        throw new Error('Telegra.ph format error');
+        const form2 = new FormData();
+        stream = fs.createReadStream(filePath);
+        form2.append('file', stream);
+
+        const res2 = await axios.post('https://file.io/?expires=1w', form2, {
+            headers: { ...form2.getHeaders() },
+            timeout: 35000
+        });
+
+        if (res2.data && res2.data.success && res2.data.link) {
+            return res2.data.link;
+        }
+
+        throw new Error('Upload servers returned invalid response');
     } catch (error) {
-        console.log('[Telegra.ph Upload Failed, trying Catbox direct...]:', error.message);
-        
-        try {
-            if (stream && typeof stream.destroy === 'function') stream.destroy();
-            
-            const formCatbox = new FormData();
-            formCatbox.append('reqtype', 'fileupload');
-            const fileStatsCatbox = fs.statSync(filePath);
-            stream = fs.createReadStream(filePath);
-            formCatbox.append('fileToUpload', stream, {
-                filename: path.basename(filePath),
-                knownLength: fileStatsCatbox.size
-            });
-
-            const resCatbox = await axios.post('https://catbox.moe/user/api.php', formCatbox, {
-                headers: { ...formCatbox.getHeaders() },
-                timeout: 35000
-            });
-
-            if (resCatbox.data && typeof resCatbox.data === 'string' && resCatbox.data.startsWith('http')) {
-                return resCatbox.data.trim();
-            }
-        } catch (err2) {
-            console.error('[Catbox Direct Error]:', err2.message);
-        }
-
+        console.error('[URL Upload Error Details]:', error.response?.data || error.message);
         throw new Error('All upload servers failed.');
     } finally {
         if (stream && typeof stream.destroy === 'function') {

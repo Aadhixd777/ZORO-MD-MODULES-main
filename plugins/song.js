@@ -1,11 +1,11 @@
 const yts = require('yt-search');
 const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
 
 async function songCommand(sock, chatId, message) {
     try {
-        const fullText = message.message?.conversation || message.message?.extendedTextMessage?.text || message.message?.imageMessage?.caption || '';
+        const fullText = message.message?.conversation || 
+                         message.message?.extendedTextMessage?.text || 
+                         message.message?.imageMessage?.caption || '';
         const incomingText = fullText.trim();
         
         const quotedContext = message.message?.extendedTextMessage?.contextInfo;
@@ -47,26 +47,8 @@ async function songCommand(sock, chatId, message) {
             const RAPID_API_KEY = '59660ea980msh58bb403149b4410p1d66b6jsn68ba86313226'; 
             const RAPID_API_HOST = 'youtube-mp36.p.rapidapi.com';
 
-            let thumbBuffer = null;
-            const thumbPath = path.join(__dirname, '../media/thumb.jpg');
-            if (fs.existsSync(thumbPath)) {
-                thumbBuffer = fs.readFileSync(thumbPath);
-            }
-
-            const contextInfo = {
-                externalAdReply: {
-                    title: "ZORO MD MUSIC DOWNLOADER",
-                    body: "🎵 Created by Aadhixd",
-                    showAdAttribution: true,
-                    renderLargerThumbnail: false,
-                    thumbnail: thumbBuffer,
-                    mediaType: 1,
-                    sourceUrl: "https://www.instagram.com/aadhi.x._______________?igsh=MWd5a21oeGtpZzNqYw=="
-                }
-            };
-
             if (incomingText === '1') {
-                await sock.sendMessage(chatId, { text: `📥 Downloading Audio (MP3) via RapidAPI... Please wait.` }, { quoted: message });
+                await sock.sendMessage(chatId, { text: `📥 Downloading Audio (MP3)... Please wait.` }, { quoted: message });
 
                 let dlUrl = null;
                 try {
@@ -94,8 +76,7 @@ async function songCommand(sock, chatId, message) {
                     audio: audioBuffer,
                     mimetype: 'audio/mpeg',
                     fileName: `song.mp3`,
-                    ptt: false,
-                    contextInfo: contextInfo
+                    ptt: false
                 }, { quoted: message });
 
                 await sock.sendMessage(chatId, { react: { text: "👑", key: message.key } });
@@ -109,7 +90,9 @@ async function songCommand(sock, chatId, message) {
                 try {
                     const res = await axios.get(videoApi, { timeout: 20000 });
                     videoDlUrl = res.data?.data?.dl || res.data?.result?.download?.url || res.data?.result?.url;
-                } catch (e) {}
+                } catch (e) {
+                    console.error('Video API Error:', e.message);
+                }
 
                 if (!videoDlUrl) {
                     return await sock.sendMessage(chatId, { text: "❌ Video download failed." }, { quoted: message });
@@ -119,8 +102,7 @@ async function songCommand(sock, chatId, message) {
                     video: { url: videoDlUrl },
                     mimetype: 'video/mp4',
                     caption: `🎬 *Downloaded via Zoro MD*\n✨ *Created by Aadhixd*`,
-                    fileName: `video.mp4`,
-                    contextInfo: contextInfo
+                    fileName: `video.mp4`
                 }, { quoted: message });
 
                 await sock.sendMessage(chatId, { react: { text: "👑", key: message.key } });
@@ -145,17 +127,15 @@ async function songCommand(sock, chatId, message) {
         }
 
         let thumbBuffer = null;
+        let imageToUse = null;
+        
         try {
             if (video.thumbnail) {
                 const thumbRes = await axios.get(video.thumbnail, { responseType: 'arraybuffer', timeout: 8000 });
                 thumbBuffer = Buffer.from(thumbRes.data);
+                imageToUse = thumbBuffer;
             }
-        } catch (e) {
-            const thumbPath = path.join(__dirname, '../media/thumb.jpg');
-            if (fs.existsSync(thumbPath)) {
-                thumbBuffer = fs.readFileSync(thumbPath);
-            }
-        }
+        } catch (e) {}
 
         const vidmateMenuText = `┌  📥 *𝐙𝐎𝐑𝐎-𝐌𝐃 VIDMATE DOWNLOADER* 📥
 │
@@ -173,29 +153,13 @@ async function songCommand(sock, chatId, message) {
 │  Aadhixd ⚡
 └─────────────────────────────────────`;
 
-        const menuContextInfo = {
-            externalAdReply: {
-                title: "ZORO MD VIDMATE DOWNLOADER",
-                body: "𝗭𝗢𝗥𝗢 𝗕𝗬 𝗔𝗮𝗱𝗵𝗶𝘅𝗱",
-                showAdAttribution: true,
-                renderLargerThumbnail: false,
-                thumbnail: thumbBuffer,
-                mediaType: 1,
-                sourceUrl: "https://www.instagram.com/aadhi.x._______________?igsh=MWd5a21oeGtpZzNqYw=="
-            }
-        };
-
-        if (thumbBuffer) {
+        if (imageToUse) {
             await sock.sendMessage(chatId, {
-                image: thumbBuffer,
-                caption: vidmateMenuText,
-                contextInfo: menuContextInfo
+                image: imageToUse,
+                caption: vidmateMenuText
             }, { quoted: message });
         } else {
-            await sock.sendMessage(chatId, { 
-                text: vidmateMenuText,
-                contextInfo: menuContextInfo
-            }, { quoted: message });
+            await sock.sendMessage(chatId, { text: vidmateMenuText }, { quoted: message });
         }
 
         await sock.sendMessage(chatId, { react: { text: "👑", key: message.key } });

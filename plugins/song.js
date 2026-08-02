@@ -91,7 +91,7 @@ async function songCommand(sock, chatId, message) {
                     }
                 }, { quoted: message });
 
-                await sock.sendMessage(chatId, { react: { text: "👑", key: message.key } });
+                await sock.sendMessage(chatId, { react: { text: "🤍", key: message.key } });
                 return;
 
             } else if (incomingText === '2') {
@@ -125,7 +125,7 @@ async function songCommand(sock, chatId, message) {
                     fileName: `video.mp4`
                 }, { quoted: message });
 
-                await sock.sendMessage(chatId, { react: { text: "👑", key: message.key } });
+                await sock.sendMessage(chatId, { react: { text: "🤍", key: message.key } });
                 return;
             }
         }
@@ -167,7 +167,7 @@ async function songCommand(sock, chatId, message) {
 *1️⃣* 🎵 Audio (MP3 Format)
 *2️⃣* 🎥 Video (MP4 Format)
 ---------------------------------------
-✨ *Created by Aadhi XD*`;
+🤍 *Created by Aadhi XD*`;
 
         if (thumbBuffer) {
             await sock.sendMessage(chatId, {

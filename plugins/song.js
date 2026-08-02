@@ -12,13 +12,24 @@ async function songCommand(sock, chatId, message) {
         if (quotedContext && (incomingText === '1' || incomingText === '2')) {
             await sock.sendMessage(chatId, { react: { text: "⏳", key: message.key } });
             
-            // Extract text/caption from the quoted message safely
+            // Extract text/caption from the quoted message safely, handling images and standard messages
             const quotedMsg = quotedContext.quotedMessage;
-            const quotedText = quotedMsg?.conversation || quotedMsg?.extendedTextMessage?.text || quotedMsg?.imageMessage?.caption || '';
-            
-            // Extract YouTube link directly from the quoted message text/caption
+            const quotedText = quotedMsg?.conversation || 
+                               quotedMsg?.extendedTextMessage?.text || 
+                               quotedMsg?.imageMessage?.caption || 
+                               quotedMsg?.videoMessage?.caption || 
+                               quotedMsg?.documentMessage?.caption || '';
+
+            // Extract YouTube link directly or fallback to searching the message object
+            let targetUrl = null;
             const linkMatch = quotedText.match(/(https?:\/\/[^\s]+)/);
-            let targetUrl = linkMatch ? linkMatch[0] : null;
+            if (linkMatch) {
+                targetUrl = linkMatch[0];
+            } else {
+                const stringifiedMsg = JSON.stringify(quotedMsg);
+                const fallbackMatch = stringifiedMsg.match(/(https?:\/\/[^\s"']+(?:youtube\.com|youtu\.be)[^\s"']*)/);
+                targetUrl = fallbackMatch ? fallbackMatch[0] : null;
+            }
 
             if (!targetUrl) {
                 return await sock.sendMessage(chatId, { text: "❌ Session expired or link not found! Please search again using .song <name>" }, { quoted: message });
@@ -28,18 +39,28 @@ async function songCommand(sock, chatId, message) {
                 // Audio Download (MP3)
                 await sock.sendMessage(chatId, { text: `📥 Downloading Audio (MP3)... Please wait.` }, { quoted: message });
 
-                const downloadApi = `https://api.vreden.web.id/api/ytmp3?url=${encodeURIComponent(targetUrl)}`;
-                let dlUrl = null;
-                try {
-                    const res = await axios.get(downloadApi, { timeout: 20000 });
-                    dlUrl = res.data?.result?.download?.url || res.data?.result?.url;
-                } catch (e) {}
+                // Alternative reliable APIs fallback chain
+                const apis = [
+                    `https://api.vreden.web.id/api/ytmp3?url=${encodeURIComponent(targetUrl)}`,
+                    `https://deliriussapi-oficial.vercel.app/download/ytmp3?url=${encodeURIComponent(targetUrl)}`
+                ];
 
-                if (!dlUrl) {
-                    return await sock.sendMessage(chatId, { text: "❌ Audio download failed. Please try again." }, { quoted: message });
+                let dlUrl = null;
+                for (let api of apis) {
+                    try {
+                        const res = await axios.get(api, { timeout: 25000 });
+                        dlUrl = res.data?.result?.download?.url || res.data?.result?.url || res.data?.data?.dl;
+                        if (dlUrl) break;
+                    } catch (e) {
+                        continue;
+                    }
                 }
 
-                const audioRes = await axios.get(dlUrl, { responseType: 'arraybuffer', timeout: 50000 });
+                if (!dlUrl) {
+                    return await sock.sendMessage(chatId, { text: "❌ Audio download failed. All APIs are currently busy. Try again later." }, { quoted: message });
+                }
+
+                const audioRes = await axios.get(dlUrl, { responseType: 'arraybuffer', timeout: 60000 });
                 const audioBuffer = Buffer.from(audioRes.data);
                 
                 // Fetch thumbnail for external ad reply
@@ -77,15 +98,24 @@ async function songCommand(sock, chatId, message) {
                 // Video Download (MP4)
                 await sock.sendMessage(chatId, { text: `📥 Downloading Video (MP4)... Please wait.` }, { quoted: message });
 
-                const videoApi = `https://api.vreden.web.id/api/ytmp4?url=${encodeURIComponent(targetUrl)}`;
+                const videoApis = [
+                    `https://api.vreden.web.id/api/ytmp4?url=${encodeURIComponent(targetUrl)}`,
+                    `https://deliriussapi-oficial.vercel.app/download/ytmp4?url=${encodeURIComponent(targetUrl)}`
+                ];
+
                 let videoDlUrl = null;
-                try {
-                    const res = await axios.get(videoApi, { timeout: 20000 });
-                    videoDlUrl = res.data?.result?.download?.url || res.data?.result?.url;
-                } catch (e) {}
+                for (let api of videoApis) {
+                    try {
+                        const res = await axios.get(api, { timeout: 25000 });
+                        videoDlUrl = res.data?.result?.download?.url || res.data?.result?.url || res.data?.data?.dl;
+                        if (videoDlUrl) break;
+                    } catch (e) {
+                        continue;
+                    }
+                }
 
                 if (!videoDlUrl) {
-                    return await sock.sendMessage(chatId, { text: "❌ Video download failed. Please try again." }, { quoted: message });
+                    return await sock.sendMessage(chatId, { text: "❌ Video download failed. All APIs are currently busy. Try again later." }, { quoted: message });
                 }
 
                 await sock.sendMessage(chatId, {

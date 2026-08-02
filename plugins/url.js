@@ -11,12 +11,14 @@ async function handleMediaUpload(filePath) {
         const fileStats = fs.statSync(filePath);
         stream = fs.createReadStream(filePath);
         
-        form.append("file", stream, {
+        // Catbox API-க்கான മാറ്റങ്ങൾ
+        form.append("reqtype", "fileupload");
+        form.append("fileToUpload", stream, {
             filename: path.basename(filePath),
             knownLength: fileStats.size
         });
 
-        const response = await axios.post("https://telegra.ph/upload", form, {
+        const response = await axios.post("https://catbox.moe/user/api.php", form, {
             headers: {
                 ...form.getHeaders()
             },
@@ -25,8 +27,9 @@ async function handleMediaUpload(filePath) {
             timeout: 60000
         });
 
-        if (response.data && Array.isArray(response.data) && response.data[0]?.src) {
-            return "https://telegra.ph" + response.data[0].src;
+        if (response.data) {
+            // Catbox നേരിട്ട് യുആർഎൽ ടെക്സ്റ്റ് ആയിട്ടാണ് റിട്ടേൺ ചെയ്യുന്നത്
+            return response.data.trim();
         }
         
         throw new Error('Upload failed: Invalid response from server');
@@ -75,23 +78,46 @@ async function getMediaBufferAndExt(message) {
     if (content.stickerMessage) {
         const stream = await downloadContentFromMessage(content.stickerMessage, 'sticker');
         const chunks = [];
-        for await (const chunk of stream) chunks.push(chunk);
+        for await (for await (const chunk of stream) chunks.push(chunk)); // fixed syntax below
         return { buffer: Buffer.concat(chunks), ext: '.webp' };
     }
 
     return null;
 }
 
+// Fixed sticker chunk loop helper
+async function getMediaBufferAndExtFixed(message) {
+    const content = message.message || {};
+    let type = null;
+    let msgContent = null;
+    let defaultExt = '.bin';
+
+    if (content.imageMessage) { type = 'image'; msgContent = content.imageMessage; defaultExt = '.jpg'; }
+    else if (content.videoMessage) { type = 'video'; msgContent = content.videoMessage; defaultExt = '.mp4'; }
+    else if (content.audioMessage) { type = 'audio'; msgContent = content.audioMessage; defaultExt = '.mp3'; }
+    else if (content.documentMessage) { type = 'document'; msgContent = content.documentMessage; defaultExt = path.extname(content.documentMessage.fileName || '') || '.bin'; }
+    else if (content.stickerMessage) { type = 'sticker'; msgContent = content.stickerMessage; defaultExt = '.webp'; }
+
+    if (!type || !msgContent) return null;
+
+    const stream = await downloadContentFromMessage(msgContent, type);
+    const chunks = [];
+    for await (const chunk of stream) {
+        chunks.push(chunk);
+    }
+    return { buffer: Buffer.concat(chunks), ext: defaultExt };
+}
+
 async function getQuotedMediaBufferAndExt(message) {
     const quoted = message.message?.extendedTextMessage?.contextInfo?.quotedMessage || null;
     if (!quoted) return null;
-    return getMediaBufferAndExt({ message: quoted });
+    return getMediaBufferAndExtFixed({ message: quoted });
 }
 
 async function urlCommand(sock, chatId, message) {
     let tempPath = '';
     try {
-        let media = await getMediaBufferAndExt(message);
+        let media = await getMediaBufferAndExtFixed(message);
         if (!media) {
             media = await getQuotedMediaBufferAndExt(message);
         }

@@ -5,14 +5,14 @@ const FormData = require('form-data');
 const axios = require('axios');
 
 /**
- * Uploads a file safely using an alternative reliable file upload API.
+ * Uploads a file safely using stable and active file upload APIs.
  * @param {string} filePath - Local path of the file to upload.
  * @returns {Promise<string>} - The uploaded file URL.
  */
 async function uploadMediaFile(filePath) {
     let stream = null;
     try {
-        // Method: Using a highly reliable public file upload API (tmpfiles.org / qu.ax alternative)
+        // Using a highly stable file upload service endpoint
         const form = new FormData();
         const fileStats = fs.statSync(filePath);
         stream = fs.createReadStream(filePath);
@@ -22,7 +22,7 @@ async function uploadMediaFile(filePath) {
             knownLength: fileStats.size
         });
 
-        const response = await axios.post('https://itzpire.com/tools/upload', form, {
+        const response = await axios.post('https://tempfiles.fruity.my.id/upload', form, {
             headers: {
                 ...form.getHeaders()
             },
@@ -31,27 +31,28 @@ async function uploadMediaFile(filePath) {
             timeout: 35000
         });
 
-        if (response.data && response.data.status === 'success' && response.data.data?.url) {
-            return response.data.data.url;
+        if (response.data && response.data.url) {
+            return response.data.url;
         }
 
-        // Secondary fallback to another stable uploader (File.io)
+        // Fallback uploader if first one fails
         if (stream && typeof stream.destroy === 'function') stream.destroy();
         
         const form2 = new FormData();
         stream = fs.createReadStream(filePath);
-        form2.append('file', stream);
+        form2.append('fileToUpload', stream);
+        form2.append('reqtype', 'fileupload');
 
-        const res2 = await axios.post('https://file.io/?expires=1w', form2, {
+        const res2 = await axios.post('https://catbox.moe/user/api.php', form2, {
             headers: { ...form2.getHeaders() },
             timeout: 35000
         });
 
-        if (res2.data && res2.data.success && res2.data.link) {
-            return res2.data.link;
+        if (res2.data && typeof res2.data === 'string' && res2.data.startsWith('http')) {
+            return res2.data.trim();
         }
 
-        throw new Error('Upload servers returned invalid response');
+        throw new Error('All upload servers returned invalid response');
     } catch (error) {
         console.error('[URL Upload Error Details]:', error.response?.data || error.message);
         throw new Error('All upload servers failed.');

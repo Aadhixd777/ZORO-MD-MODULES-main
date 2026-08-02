@@ -5,13 +5,14 @@ const FormData = require('form-data');
 const axios = require('axios');
 
 /**
- * Uploads a file to Catbox.moe and returns the permanent URL safely.
+ * Uploads a file to Catbox.moe or fallback server and returns the permanent URL safely.
  * @param {string} filePath - Local path of the file to upload.
  * @returns {Promise<string>} - The uploaded file URL.
  */
-async function catboxUpload(filePath) {
+async function uploadMediaFile(filePath) {
     let stream = null;
     try {
+        // Attempt 1: Catbox.moe
         const form = new FormData();
         form.append('reqtype', 'fileupload');
         
@@ -25,17 +26,47 @@ async function catboxUpload(filePath) {
 
         const response = await axios.post('https://catbox.moe/user/api.php', form, {
             headers: {
-                ...form.getHeaders()
+                ...form.getHeaders(),
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
             },
             maxContentLength: Infinity,
             maxBodyLength: Infinity,
-            timeout: 30000
+            timeout: 35000
         });
 
-        return response.data;
+        if (response.data && typeof response.data === 'string' && response.data.startsWith('http')) {
+            return response.data.trim();
+        }
+        throw new Error('Invalid Catbox response');
     } catch (error) {
-        console.error('[Catbox Upload Error]:', error.response?.data || error.message);
-        throw new Error('Catbox upload failed: ' + (error.message || error));
+        console.log('[Catbox Upload Failed, trying alternative...]:', error.response?.data || error.message);
+        
+        // Attempt 2: Fallback to AnonFiles / FileIO / Quax if Catbox fails
+        try {
+            if (stream && typeof stream.destroy === 'function') stream.destroy();
+            
+            const formFallback = new FormData();
+            const fileStatsFallback = fs.statSync(filePath);
+            stream = fs.createReadStream(filePath);
+            
+            formFallback.append('file', stream, {
+                filename: path.basename(filePath),
+                knownLength: fileStatsFallback.size
+            });
+
+            const resFallback = await axios.post('https://qu.ax/upload.php', formFallback, {
+                headers: { ...formFallback.getHeaders() },
+                timeout: 35000
+            });
+
+            if (resFallback.data && resFallback.data.success) {
+                return resFallback.data.files[0].url;
+            }
+        } catch (err2) {
+            console.error('[Fallback Upload Error]:', err2.message);
+        }
+
+        throw new Error('All upload servers failed.');
     } finally {
         if (stream && typeof stream.destroy === 'function') {
             stream.destroy();
@@ -69,7 +100,6 @@ async function getMediaBufferAndExt(message) {
         const stream = await downloadContentFromMessage(content.audioMessage, 'audio');
         const chunks = [];
         for await (const chunk of stream) chunks.push(chunk);
-        // WhatsApp audio can be opus/ogg or mp3, standardizing to mp3 ensures broad compatibility
         return { buffer: Buffer.concat(chunks), ext: '.mp3' };
     }
 
@@ -104,7 +134,7 @@ async function getQuotedMediaBufferAndExt(message) {
 }
 
 /**
- * Main URL command handler to convert WhatsApp media to permanent Catbox link.
+ * Main URL command handler to convert WhatsApp media to permanent URL.
  * @param {Object} sock - Baileys socket instance.
  * @param {string} chatId - Target chat ID.
  * @param {Object} message - Incoming message object.
@@ -129,13 +159,12 @@ async function urlCommand(sock, chatId, message) {
             fs.mkdirSync(tempDir, { recursive: true });
         }
 
-        // Generating a secure timestamp-based unique filename to avoid 412 errors
         tempPath = path.join(tempDir, `media_${Date.now()}${media.ext}`);
         fs.writeFileSync(tempPath, media.buffer);
 
-        await sock.sendMessage(chatId, { text: '⏳ Uploading media to Catbox, please wait…' }, { quoted: message });
+        await sock.sendMessage(chatId, { text: '⏳ Uploading media, please wait…' }, { quoted: message });
 
-        const fileUrl = await catboxUpload(tempPath);
+        const fileUrl = await uploadMediaFile(tempPath);
 
         if (!fileUrl || typeof fileUrl !== 'string' || !fileUrl.startsWith('http')) {
             await sock.sendMessage(chatId, { text: '❌ Failed to upload media. Invalid response from server.' }, { quoted: message });

@@ -209,6 +209,12 @@ async function handleMessages(sock, messageUpdate, printLog) {
 
         const message = messages[0];
         if (!message?.message) return;
+              // Handle song menu reply (1 or 2)
+        const userMsgCheck = (message.message?.conversation || message.message?.extendedTextMessage?.text || '').trim();
+        if (userMsgCheck === '1' || userMsgCheck === '2') {
+            await songCommand(sock, chatId, message);
+            return;
+        }
 
         // Handle autoread functionality
         await handleAutoread(sock, message);

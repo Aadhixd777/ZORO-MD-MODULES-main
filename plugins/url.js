@@ -11,7 +11,6 @@ async function handleMediaUpload(filePath) {
         const fileStats = fs.statSync(filePath);
         stream = fs.createReadStream(filePath);
         
-        // Catbox API-க்கான മാറ്റങ്ങൾ
         form.append("reqtype", "fileupload");
         form.append("fileToUpload", stream, {
             filename: path.basename(filePath),
@@ -28,7 +27,6 @@ async function handleMediaUpload(filePath) {
         });
 
         if (response.data) {
-            // Catbox നേരിട്ട് യുആർഎൽ ടെക്സ്റ്റ് ആയിട്ടാണ് റിട്ടേൺ ചെയ്യുന്നത്
             return response.data.trim();
         }
         
@@ -43,50 +41,6 @@ async function handleMediaUpload(filePath) {
 }
 
 async function getMediaBufferAndExt(message) {
-    const content = message.message || {};
-
-    if (content.imageMessage) {
-        const stream = await downloadContentFromMessage(content.imageMessage, 'image');
-        const chunks = [];
-        for await (const chunk of stream) chunks.push(chunk);
-        return { buffer: Buffer.concat(chunks), ext: '.jpg' };
-    }
-
-    if (content.videoMessage) {
-        const stream = await downloadContentFromMessage(content.videoMessage, 'video');
-        const chunks = [];
-        for await (const chunk of stream) chunks.push(chunk);
-        return { buffer: Buffer.concat(chunks), ext: '.mp4' };
-    }
-
-    if (content.audioMessage) {
-        const stream = await downloadContentFromMessage(content.audioMessage, 'audio');
-        const chunks = [];
-        for await (const chunk of stream) chunks.push(chunk);
-        return { buffer: Buffer.concat(chunks), ext: '.mp3' };
-    }
-
-    if (content.documentMessage) {
-        const stream = await downloadContentFromMessage(content.documentMessage, 'document');
-        const chunks = [];
-        for await (const chunk of stream) chunks.push(chunk);
-        const fileName = content.documentMessage.fileName || 'file.bin';
-        const ext = path.extname(fileName) || '.bin';
-        return { buffer: Buffer.concat(chunks), ext };
-    }
-
-    if (content.stickerMessage) {
-        const stream = await downloadContentFromMessage(content.stickerMessage, 'sticker');
-        const chunks = [];
-        for await (for await (const chunk of stream) chunks.push(chunk)); // fixed syntax below
-        return { buffer: Buffer.concat(chunks), ext: '.webp' };
-    }
-
-    return null;
-}
-
-// Fixed sticker chunk loop helper
-async function getMediaBufferAndExtFixed(message) {
     const content = message.message || {};
     let type = null;
     let msgContent = null;
@@ -111,13 +65,13 @@ async function getMediaBufferAndExtFixed(message) {
 async function getQuotedMediaBufferAndExt(message) {
     const quoted = message.message?.extendedTextMessage?.contextInfo?.quotedMessage || null;
     if (!quoted) return null;
-    return getMediaBufferAndExtFixed({ message: quoted });
+    return getMediaBufferAndExt({ message: quoted });
 }
 
 async function urlCommand(sock, chatId, message) {
     let tempPath = '';
     try {
-        let media = await getMediaBufferAndExtFixed(message);
+        let media = await getMediaBufferAndExt(message);
         if (!media) {
             media = await getQuotedMediaBufferAndExt(message);
         }

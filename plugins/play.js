@@ -22,7 +22,7 @@ async function playCommand(sock, chatId, message) {
         let trackCover = null;
         let finalQuery = searchQuery;
 
-        // Step 1: Try fetching official metadata using Deezer API for better search accuracy
+        // Step 1: Deezer metadata lookup
         try {
             const deezerRes = await axios.get(`https://api.deezer.com/search?q=${encodeURIComponent(searchQuery)}`, { timeout: 8000 });
             if (deezerRes.data && deezerRes.data.data && deezerRes.data.data.length > 0) {
@@ -31,7 +31,7 @@ async function playCommand(sock, chatId, message) {
                 trackCover = track.album?.cover_medium || null;
             }
         } catch (e) {
-            console.log('[Play Metadata]: Deezer lookup skipped, using raw search query...');
+            console.log('[Play Metadata]: Deezer lookup skipped...');
         }
 
         // Step 2: Search on YouTube using yt-search
@@ -53,51 +53,43 @@ async function playCommand(sock, chatId, message) {
 
         let audioBuffer = null;
 
-        // Step 3: Multi-API Fallback System with updated stable endpoints
+        // Step 3: Powerful Cobalt & Multi-API Fallback System
         const downloadApis = [
-            `https://api.vreden.web.id/api/ytmp3?url=${encodeURIComponent(video.url)}`,
-            `https://deliriussapi-oficial.vercel.app/download/ytmp4?url=${encodeURIComponent(video.url)}`,
-            `https://api.agatz.xyz/api/ytmp3?url=${encodeURIComponent(video.url)}`
+            // Cobalt API (Very Stable & Fast)
+            async () => {
+                const res = await axios.post('https://api.cobalt.tools/api/json', {
+                    url: video.url,
+                    isAudioOnly: true,
+                    aFormat: 'mp3'
+                }, {
+                    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                    timeout: 15000
+                });
+                return res.data?.url || res.data?.picker?.[0]?.url;
+            },
+            // Vreden API
+            async () => {
+                const res = await axios.get(`https://api.vreden.web.id/api/ytmp3?url=${encodeURIComponent(video.url)}`, { timeout: 15000 });
+                return res.data?.result?.download?.url || res.data?.result?.url;
+            },
+            // Siputzx API
+            async () => {
+                const res = await axios.get(`https://api.siputzx.my.id/api/d/ytmp3?url=${encodeURIComponent(video.url)}`, { timeout: 15000 });
+                return res.data?.data?.dl || res.data?.data?.download;
+            }
         ];
 
-        // Trying API 1
-        try {
-            const res = await axios.get(downloadApis[0], { timeout: 15000 });
-            const downloadUrl = res.data?.result?.download?.url || res.data?.result?.url || res.data?.url;
-            if (downloadUrl) {
-                const audioRes = await axios.get(downloadUrl, { responseType: 'arraybuffer', timeout: 45000 });
-                audioBuffer = Buffer.from(audioRes.data);
-            }
-        } catch (e) {
-            console.log('[Play API 1]: Failed, trying alternative...');
-        }
-
-        // Trying API 2 (Fallback)
-        if (!audioBuffer) {
+        for (const apiFn of downloadApis) {
+            if (audioBuffer) break;
             try {
-                const res = await axios.get(downloadApis[1], { timeout: 15000 });
-                const data = res.data?.data || res.data?.result;
-                const downloadUrl = data?.download?.url || data?.url || data?.downloadUrl;
+                const downloadUrl = await apiFn();
                 if (downloadUrl) {
                     const audioRes = await axios.get(downloadUrl, { responseType: 'arraybuffer', timeout: 45000 });
                     audioBuffer = Buffer.from(audioRes.data);
+                    if (audioBuffer && audioBuffer.length > 1000) break;
                 }
-            } catch (e) {
-                console.log('[Play API 2]: Failed, trying alternative...');
-            }
-        }
-
-        // Trying API 3 (Fallback)
-        if (!audioBuffer) {
-            try {
-                const res = await axios.get(downloadApis[2], { timeout: 15000 });
-                const downloadUrl = res.data?.data?.downloadUrl || res.data?.result?.downloadUrl || res.data?.result?.url;
-                if (downloadUrl) {
-                    const audioRes = await axios.get(downloadUrl, { responseType: 'arraybuffer', timeout: 45000 });
-                    audioBuffer = Buffer.from(audioRes.data);
-                }
-            } catch (e) {
-                console.log('[Play API 3]: Failed.');
+            } catch (err) {
+                console.log(`[Play API Error]: Trying next high-performance endpoint...`);
             }
         }
 

@@ -4,13 +4,13 @@ const path = require('path');
 const axios = require('axios');
 const FormData = require('form-data');
 
-async function handleMediaUpload(filePath) {
+async function UploadFileCatbox(filePath) {
     let stream = null;
     try {
         const form = new FormData();
         const fileStats = fs.statSync(filePath);
-        stream = fs.createReadStream(filePath);
         
+        stream = fs.createReadStream(filePath);
         form.append("reqtype", "fileupload");
         form.append("fileToUpload", stream, {
             filename: path.basename(filePath),
@@ -18,8 +18,9 @@ async function handleMediaUpload(filePath) {
         });
 
         const response = await axios.post("https://catbox.moe/user/api.php", form, {
-            headers: {
-                ...form.getHeaders()
+            headers: { 
+                ...form.getHeaders(),
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
             },
             maxContentLength: Infinity,
             maxBodyLength: Infinity,
@@ -29,37 +30,51 @@ async function handleMediaUpload(filePath) {
         if (response.data) {
             return response.data.trim();
         }
-        
-        throw new Error('Upload failed: Invalid response from server');
+        throw new Error('Invalid response from server');
     } catch (error) {
         throw new Error(error.response?.data?.error || error.message);
     } finally {
-        if (stream && typeof stream.destroy === 'function') {
+        if (stream && !stream.destroyed && typeof stream.destroy === 'function') {
             stream.destroy();
         }
     }
 }
 
 async function getMediaBufferAndExt(message) {
-    const content = message.message || {};
-    let type = null;
-    let msgContent = null;
-    let defaultExt = '.bin';
-
-    if (content.imageMessage) { type = 'image'; msgContent = content.imageMessage; defaultExt = '.jpg'; }
-    else if (content.videoMessage) { type = 'video'; msgContent = content.videoMessage; defaultExt = '.mp4'; }
-    else if (content.audioMessage) { type = 'audio'; msgContent = content.audioMessage; defaultExt = '.mp3'; }
-    else if (content.documentMessage) { type = 'document'; msgContent = content.documentMessage; defaultExt = path.extname(content.documentMessage.fileName || '') || '.bin'; }
-    else if (content.stickerMessage) { type = 'sticker'; msgContent = content.stickerMessage; defaultExt = '.webp'; }
-
-    if (!type || !msgContent) return null;
-
-    const stream = await downloadContentFromMessage(msgContent, type);
-    const chunks = [];
-    for await (const chunk of stream) {
-        chunks.push(chunk);
+    const m = message.message || {};
+    if (m.imageMessage) {
+        const stream = await downloadContentFromMessage(m.imageMessage, 'image');
+        const chunks = [];
+        for await (const chunk of stream) chunks.push(chunk);
+        return { buffer: Buffer.concat(chunks), ext: '.jpg' };
     }
-    return { buffer: Buffer.concat(chunks), ext: defaultExt };
+    if (m.videoMessage) {
+        const stream = await downloadContentFromMessage(m.videoMessage, 'video');
+        const chunks = [];
+        for await (const chunk of stream) chunks.push(chunk);
+        return { buffer: Buffer.concat(chunks), ext: '.mp4' };
+    }
+    if (m.audioMessage) {
+        const stream = await downloadContentFromMessage(m.audioMessage, 'audio');
+        const chunks = [];
+        for await (const chunk of stream) chunks.push(chunk);
+        return { buffer: Buffer.concat(chunks), ext: '.mp3' };
+    }
+    if (m.documentMessage) {
+        const stream = await downloadContentFromMessage(m.documentMessage, 'document');
+        const chunks = [];
+        for await (const chunk of stream) chunks.push(chunk);
+        const fileName = m.documentMessage.fileName || 'file.bin';
+        const ext = path.extname(fileName) || '.bin';
+        return { buffer: Buffer.concat(chunks), ext };
+    }
+    if (m.stickerMessage) {
+        const stream = await downloadContentFromMessage(m.stickerMessage, 'sticker');
+        const chunks = [];
+        for await (const chunk of stream) chunks.push(chunk);
+        return { buffer: Buffer.concat(chunks), ext: '.webp' };
+    }
+    return null;
 }
 
 async function getQuotedMediaBufferAndExt(message) {
@@ -69,47 +84,42 @@ async function getQuotedMediaBufferAndExt(message) {
 }
 
 async function urlCommand(sock, chatId, message) {
-    let tempPath = '';
     try {
         let media = await getMediaBufferAndExt(message);
-        if (!media) {
-            media = await getQuotedMediaBufferAndExt(message);
-        }
+        if (!media) media = await getQuotedMediaBufferAndExt(message);
 
         if (!media) {
-            await sock.sendMessage(chatId, { 
-                text: 'Please reply to an Image, Video, Audio, Document or Sticker to get a permanent URL.' 
-            }, { quoted: message });
+            await sock.sendMessage(chatId, { text: 'Send or reply to a media (image, video, audio, sticker, document) to get a permanent URL.' }, { quoted: message });
             return;
         }
 
         try { await sock.sendMessage(chatId, { react: { text: "⏫", key: message.key } }); } catch {}
 
         const tempDir = path.join(__dirname, '../temp');
-        if (!fs.existsSync(tempDir)) {
-            fs.mkdirSync(tempDir, { recursive: true });
-        }
-
-        tempPath = path.join(tempDir, `media_${Date.now()}${media.ext}`);
+        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+        const tempPath = path.join(tempDir, `${Date.now()}${media.ext}`);
         fs.writeFileSync(tempPath, media.buffer);
 
-        const mediaUrl = await handleMediaUpload(tempPath);
-
-        try { await sock.sendMessage(chatId, { react: { text: "✅", key: message.key } }); } catch {}
-
-        await sock.sendMessage(chatId, { text: `Permanent URL: ${mediaUrl}` }, { quoted: message });
-    } catch (error) {
-        console.error('Error in url command:', error);
-        try { await sock.sendMessage(chatId, { react: { text: "❌", key: message.key } }); } catch {}
-        await sock.sendMessage(chatId, { text: `Failed to upload media: ${error.message}` }, { quoted: message });
-    } finally {
-        if (tempPath && fs.existsSync(tempPath)) {
+        let url = '';
+        try {
+            url = await UploadFileCatbox(tempPath);
+        } finally {
             setTimeout(() => {
-                try { 
-                    fs.unlinkSync(tempPath); 
-                } catch (err) {}
+                try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch {}
             }, 2000);
         }
+
+        if (!url) {
+            await sock.sendMessage(chatId, { text: 'Failed to upload media.' }, { quoted: message });
+            return;
+        }
+
+        try { await sock.sendMessage(chatId, { react: { text: "✅", key: message.key } }); } catch {}
+        await sock.sendMessage(chatId, { text: `Permanent URL: ${url}` }, { quoted: message });
+    } catch (error) {
+        console.error('[URL] error:', error?.message || error);
+        try { await sock.sendMessage(chatId, { react: { text: "❌", key: message.key } }); } catch {}
+        await sock.sendMessage(chatId, { text: `Failed to convert media to URL: ${error?.message || error}` }, { quoted: message });
     }
 }
 

@@ -1,5 +1,9 @@
-const { getAntilink, setAntilink, removeAntilink } = require('../lib/index');
+const { bots } = require('../lib/antilink');
+const { setAntilink, getAntilink, removeAntilink } = require('../lib/index');
 const isAdmin = require('../lib/isAdmin');
+
+// Bot Owner Number
+const BOT_OWNER = '918136880986@s.whatsapp.net'; 
 
 async function handleAntilinkCommand(sock, chatId, userMessage, senderId, isSenderAdmin, message) {
     try {
@@ -13,7 +17,7 @@ async function handleAntilinkCommand(sock, chatId, userMessage, senderId, isSend
         const action = args[0];
 
         if (!action) {
-            const usage = `\`\`\`ANTILINK SETUP\n\n${prefix}antilink on\n${prefix}antilink set delete | kick | warn\n${prefix}antilink off\n${prefix}antilink get\n\`\`\``;
+            const usage = `\`\`\`ANTILINK SETUP\n\n${prefix}antilink on\n${prefix}antilink set delete | kick | warn\n${prefix}antilink off\n\`\`\``;
             await sock.sendMessage(chatId, { text: usage }, { quoted: message });
             return;
         }
@@ -21,14 +25,14 @@ async function handleAntilinkCommand(sock, chatId, userMessage, senderId, isSend
         switch (action) {
             case 'on':
                 const existingConfig = await getAntilink(chatId, 'on');
-                if (existingConfig?.enabled) {
-                    await sock.sendMessage(chatId, { text: '*_Antilink is already ON_*' }, { quoted: message });
+                if (existingConfig?.enabled || existingConfig) {
+                    await sock.sendMessage(chatId, { text: '*_Antilink is already on_*' }, { quoted: message });
                     return;
                 }
                 const result = await setAntilink(chatId, 'on', 'delete');
                 await sock.sendMessage(chatId, { 
-                    text: result ? '*_Antilink has been turned ON (Default: delete)_*' : '*_Failed to turn on Antilink_*' 
-                }, { quoted: message });
+                    text: result ? '*_Antilink has been turned ON (Default action: delete)_*' : '*_Failed to turn on Antilink_*' 
+                },{ quoted: message });
                 break;
 
             case 'off':
@@ -58,8 +62,10 @@ async function handleAntilinkCommand(sock, chatId, userMessage, senderId, isSend
 
             case 'get':
                 const config = await getAntilink(chatId, 'on');
+                const status = config ? 'ON' : 'OFF';
+                const actionType = config?.action || (config ? 'delete' : 'Not set');
                 await sock.sendMessage(chatId, { 
-                    text: `*_Antilink Configuration:_*\nStatus: ${config?.enabled ? 'ON' : 'OFF'}\nAction: ${config?.action || 'delete'}` 
+                    text: `*_Antilink Configuration:_*\nStatus: ${status}\nAction: ${actionType}` 
                 }, { quoted: message });
                 break;
 
@@ -72,59 +78,94 @@ async function handleAntilinkCommand(sock, chatId, userMessage, senderId, isSend
     }
 }
 
-async function handleLinkDetection(sock, chatId, message, userMessage, senderId, isSenderAdmin) {
+async function handleLinkDetection(sock, chatId, message, userMessage, senderId) {
     try {
-        // 1. അഡ്മിൻമാർ ലിങ്ക് അയച്ചാൽ ഡിലീറ്റ് ചെയ്യേണ്ടതില്ല (Bypass Admins)
-        if (isSenderAdmin) return;
+        // 1. Bypass if the sender is the bot owner
+        if (senderId.includes(BOT_OWNER.split('@')[0])) {
+            console.log('Bot owner sent a link. Skipping antilink.');
+            return;
+        }
 
-        // 2. ആന്റിലിങ്ക് കോൺഫിഗറേഷൻ എടുക്കുന്നു
-        const config = await getAntilink(chatId, 'on');
-        if (!config || !config.enabled) return;
+        const antilinkConfig = await getAntilink(chatId, 'on');
+        if (!antilinkConfig) return; // Return if Antilink is off
 
-        const action = config.action || 'delete';
+        // 2. Bypass if the sender is the group creator
+        let groupMetadata;
+        try {
+            groupMetadata = await sock.groupMetadata(chatId);
+        } catch (e) {
+            console.error('Failed to fetch group metadata:', e);
+            return;
+        }
 
-        // 3. ലിങ്കുകൾ കണ്ടെത്താനുള്ള റീജക്സ് (Regex Pattern)
-        const linkPattern = /https?:\/\/\S+|www\.\S+|(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/\S*)?|chat\.whatsapp\.com\/[A-Za-z0-9]{20,}|t\.me\/[A-Za-z0-9_]+/i;
+        const groupOwner = groupMetadata.owner;
+        if (senderId === groupOwner) {
+            console.log('Sender is the group creator. Skipping.');
+            return;
+        }
+
+        const actionType = antilinkConfig.action || 'delete';
+
+        console.log(`Antilink Setting for ${chatId}: ON (Action: ${actionType})`);
+        console.log(`Checking message for links: ${userMessage}`);
+
+        const linkPattern = /https?:\/\/\S+|www\.\S+|(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/\S*)?/i;
 
         if (linkPattern.test(userMessage)) {
-            console.log(`[ANTILINK] Link detected from ${senderId} in ${chatId}`);
+            console.log('Detected a link!');
 
-            const messageId = message.key.id;
-            const participant = message.key.participant || senderId;
+            const quotedMessageId = message.key.id;
+            const quotedParticipant = message.key.participant || senderId;
 
-            // ✅ മെസ്സേജ് ഡിലീറ്റ് ചെയ്യൽ
+            // Step 1: Delete the message first
             try {
                 await sock.sendMessage(chatId, {
-                    delete: { remoteJid: chatId, fromMe: false, id: messageId, participant: participant }
+                    delete: { remoteJid: chatId, fromMe: false, id: quotedMessageId, participant: quotedParticipant },
                 });
-            } catch (err) {
-                console.error('[ANTILINK] Failed to delete message:', err.message);
+                console.log('Message deleted successfully.');
+            } catch (error)  {
+                console.error('Failed to delete message:', error);
             }
 
-            // ✅ സെറ്റ് ചെയ്ത ആക്ഷൻ അനുസരിച്ച് പ്രവർത്തിക്കുന്നു (Delete, Kick, Warn)
-            if (action === 'kick') {
+            // Perform action based on configuration
+            if (actionType === 'kick') {
                 try {
+                    // Step 2: Send MP3 Audio file with ONLY the mention (No caption text)
+                    const audioUrl = 'https://www.image2url.com/r2/default/audio/1785772061136-c435c7b0-d733-40bd-a2dd-25fd815eb969.m4a';
+
+                    await sock.sendMessage(chatId, {
+                        audio: { url: audioUrl },
+                        mimetype: 'audio/mp4',
+                        ptt: false, // Normal MP3 audio file
+                        mentions: [senderId] // Only mentions the user without any text caption
+                    });
+
+                    console.log('Audio sent successfully with mention. Waiting before kicking...');
+                    
+                    // Delay to ensure the audio is completely sent before removing the user
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+
+                    // Step 3: Remove user from the group after the audio is sent
                     await sock.groupParticipantsUpdate(chatId, [senderId], 'remove');
-                    await sock.sendMessage(chatId, { 
-                        text: `❌ @${senderId.split('@')[0]} was kicked for sending links!`,
-                        mentions: [senderId]
-                    });
-                } catch (e) {
-                    await sock.sendMessage(chatId, { 
-                        text: `⚠️ Links are not allowed here! (@${senderId.split('@')[0]})`,
-                        mentions: [senderId]
-                    });
+                    console.log('User kicked successfully.');
+                } catch (err) {
+                    console.error('Failed to kick user or send audio:', err);
+                    await sock.sendMessage(chatId, { text: '_Failed to kick user. Make sure bot is admin._' });
                 }
-            } else {
-                // Delete or Warn Message
+            } else if (actionType === 'warn') {
                 await sock.sendMessage(chatId, { 
-                    text: `⚠️ Warning! @${senderId.split('@')[0]}, sending links is strictly prohibited in this group!`,
-                    mentions: [senderId]
+                    text: `_Warning! @${senderId.split('@')[0]}, posting links is not allowed here!_`, 
+                    mentions: [senderId] 
+                });
+            } else {
+                await sock.sendMessage(chatId, { 
+                    text: `_@${senderId.split('@')[0]}, links are not allowed in this group!_`, 
+                    mentions: [senderId] 
                 });
             }
         }
     } catch (error) {
-        console.error('Error in handleLinkDetection:', error.message);
+        console.error('Error in link detection:', error);
     }
 }
 

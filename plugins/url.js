@@ -4,37 +4,32 @@ const path = require('path');
 const axios = require('axios');
 const FormData = require('form-data');
 
-async function UploadFileCatbox(filePath) {
+async function UploadFileTmpFiles(filePath) {
     let stream = null;
     try {
         const form = new FormData();
         const fileStats = fs.statSync(filePath);
         
         stream = fs.createReadStream(filePath);
-        form.append("reqtype", "fileupload");
-        form.append("fileToUpload", stream, {
+        form.append("file", stream, {
             filename: path.basename(filePath),
             knownLength: fileStats.size
         });
 
-        // bot-hosting.net പോലെയുള്ള സെർവറുകളിൽ 412 എറർ വരാതിരിക്കാൻ ആവശ്യമായ കൃത്യമായ ഹെഡറുകൾ
-        const response = await axios.post("https://catbox.moe/user/api.php", form, {
+        const response = await axios.post("https://tmpfiles.org/api/v1/upload", form, {
             headers: { 
                 ...form.getHeaders(),
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': '*/*',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'Connection': 'keep-alive',
-                'Origin': 'https://catbox.moe',
-                'Referer': 'https://catbox.moe/'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             },
             maxContentLength: Infinity,
             maxBodyLength: Infinity,
             timeout: 60000
         });
 
-        if (response.data) {
-            return response.data.trim();
+        if (response.data && response.data.status === 'success') {
+            let rawUrl = response.data.data.url;
+            let finalUrl = rawUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+            return finalUrl;
         }
         throw new Error('Invalid response from server');
     } catch (error) {
@@ -108,7 +103,7 @@ async function urlCommand(sock, chatId, message) {
 
         let url = '';
         try {
-            url = await UploadFileCatbox(tempPath);
+            url = await UploadFileTmpFiles(tempPath);
         } finally {
             setTimeout(() => {
                 try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch {}

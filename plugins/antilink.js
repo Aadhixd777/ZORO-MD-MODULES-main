@@ -80,16 +80,16 @@ async function handleAntilinkCommand(sock, chatId, userMessage, senderId, isSend
 
 async function handleLinkDetection(sock, chatId, message, userMessage, senderId) {
     try {
-        // 1. Bypass if the sender is the bot owner
+        // 1. ബോട്ട് ഓണർ ആണെങ്കിൽ ഒഴിവാക്കുക
         if (senderId.includes(BOT_OWNER.split('@')[0])) {
             console.log('Bot owner sent a link. Skipping antilink.');
             return;
         }
 
         const antilinkConfig = await getAntilink(chatId, 'on');
-        if (!antilinkConfig) return; // Return if Antilink is off
+        if (!antilinkConfig) return; // ആന്റിലിങ്ക് ഓഫ് ആണെങ്കിൽ റിട്ടേൺ ചെയ്യുക
 
-        // 2. Bypass if the sender is the group creator
+        // 2. ഗ്രൂപ്പ് ക്രിയേറ്റർ ആണെങ്കിൽ ഒഴിവാക്കുക
         let groupMetadata;
         try {
             groupMetadata = await sock.groupMetadata(chatId);
@@ -117,7 +117,7 @@ async function handleLinkDetection(sock, chatId, message, userMessage, senderId)
             const quotedMessageId = message.key.id;
             const quotedParticipant = message.key.participant || senderId;
 
-            // Step 1: Delete the message first
+            // Step 1: ലിങ്ക് അയച്ച മെസ്സേജ് ആദ്യം ഡിലീറ്റ് ചെയ്യുക
             try {
                 await sock.sendMessage(chatId, {
                     delete: { remoteJid: chatId, fromMe: false, id: quotedMessageId, participant: quotedParticipant },
@@ -127,27 +127,27 @@ async function handleLinkDetection(sock, chatId, message, userMessage, senderId)
                 console.error('Failed to delete message:', error);
             }
 
-            // Perform action based on configuration
+            // Step 2: കോൺഫിഗറേഷൻ അനുസരിച്ച് ആക്ഷൻ ചെയ്യുക (Kick ആയാൽ മാത്രം ഓഡിയോ കൊടുക്കുക)
             if (actionType === 'kick') {
                 try {
-                    // Step 2: Send MP3 Audio file with ONLY the mention (No caption text)
                     const audioUrl = 'https://www.image2url.com/r2/default/audio/1785772061136-c435c7b0-d733-40bd-a2dd-25fd815eb969.m4a';
 
+                    // സെപ്പറേറ്റ് സ്റ്റെപ്പ്: യൂസറെ മെൻഷൻ ചെയ്തുകൊണ്ട് എംപി3 ഓഡിയോ ഫയൽ മാത്രം സെൻഡ് ചെയ്യുന്നു
                     await sock.sendMessage(chatId, {
                         audio: { url: audioUrl },
-                        mimetype: 'audio/mp4',
-                        ptt: false, // Normal MP3 audio file
-                        mentions: [senderId] // Only mentions the user without any text caption
+                        mimetype: 'audio/mpeg',
+                        ptt: false, // വോയിസ് നോട്ട് അല്ല, നോർമൽ ഓഡിയോ ഫോർമാറ്റ്
+                        mentions: [senderId] // യൂസറെ മാത്രം മെൻഷൻ ചെയ്യുന്നു
                     });
 
                     console.log('Audio sent successfully with mention. Waiting before kicking...');
                     
-                    // Delay to ensure the audio is completely sent before removing the user
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    // ഓഡിയോ യൂസർ പൂർണ്ണമായി കേൾക്കാൻ/കാണാൻ ചെറിയ ഒരു ഡിലേ കൊടുക്കുന്നു (3 സെക്കൻഡ്)
+                    await new Promise(resolve => setTimeout(resolve, 3000));
 
-                    // Step 3: Remove user from the group after the audio is sent
+                    // Step 3: അതിനുശേഷം മാത്രം യൂസറെ ഗ്രൂപ്പിൽ നിന്ന് കിക്ക് ചെയ്യുന്നു
                     await sock.groupParticipantsUpdate(chatId, [senderId], 'remove');
-                    console.log('User kicked successfully.');
+                    console.log('User kicked successfully after audio.');
                 } catch (err) {
                     console.error('Failed to kick user or send audio:', err);
                     await sock.sendMessage(chatId, { text: '_Failed to kick user. Make sure bot is admin._' });

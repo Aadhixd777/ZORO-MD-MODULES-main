@@ -127,27 +127,28 @@ async function handleLinkDetection(sock, chatId, message, userMessage, senderId)
                 console.error('Failed to delete message:', error);
             }
 
-            // Step 2: കോൺഫിഗറേഷൻ അനുസരിച്ച് ആക്ഷൻ ചെയ്യുക (Kick ആയാൽ മാത്രം ഓഡിയോ കൊടുക്കുക)
+            // Step 2: കോൺഫിഗറേഷൻ അനുസരിച്ച് ആക്ഷൻ ചെയ്യുക (Kick ആയാൽ ഓഡിയോയും ക്യാപ്ഷനും മെൻഷനും കൊടുക്കുക)
             if (actionType === 'kick') {
                 try {
                     const audioUrl = 'https://www.image2url.com/r2/default/audio/1785772061136-c435c7b0-d733-40bd-a2dd-25fd815eb969.m4a';
 
-                    // സെപ്പറേറ്റ് സ്റ്റെപ്പ്: യൂസറെ മെൻഷൻ ചെയ്തുകൊണ്ട് എംപി3 ഓഡിയോ ഫയൽ മാത്രം സെൻഡ് ചെയ്യുന്നു
+                    // യൂസറെ മെൻഷൻ ചെയ്ത് നിങ്ങൾ തന്ന ക്യാപ്ഷനോട് കൂടി ഓഡിയോ അയക്കുന്നു
                     await sock.sendMessage(chatId, {
                         audio: { url: audioUrl },
                         mimetype: 'audio/mpeg',
-                        ptt: false, // വോയിസ് നോട്ട് അല്ല, നോർമൽ ഓഡിയോ ഫോർമാറ്റ്
-                        mentions: [senderId] // യൂസറെ മാത്രം മെൻഷൻ ചെയ്യുന്നു
+                        ptt: false, // നോർമൽ എംപി3 ഓഡിയോ ഫോർമാറ്റ്
+                        caption: `_@${senderId.split('@')[0]} Uriyil aadunnathinte parayilladathe irangipoda_`,
+                        mentions: [senderId]
                     });
 
-                    console.log('Audio sent successfully with mention. Waiting before kicking...');
+                    console.log('Audio and caption sent successfully with mention. Waiting before kicking...');
                     
-                    // ഓഡിയോ യൂസർ പൂർണ്ണമായി കേൾക്കാൻ/കാണാൻ ചെറിയ ഒരു ഡിലേ കൊടുക്കുന്നു (3 സെക്കൻഡ്)
-                    await new Promise(resolve => setTimeout(resolve, 3000));
+                    // ഓഡിയോയും ക്യാപ്ഷനും യൂസർക്ക് കാണാനും കേൾക്കാനും വേണ്ടിയുള്ള ടൈം ഡിലേ (3.5 സെക്കൻഡ്)
+                    await new Promise(resolve => setTimeout(resolve, 3500));
 
                     // Step 3: അതിനുശേഷം മാത്രം യൂസറെ ഗ്രൂപ്പിൽ നിന്ന് കിക്ക് ചെയ്യുന്നു
                     await sock.groupParticipantsUpdate(chatId, [senderId], 'remove');
-                    console.log('User kicked successfully after audio.');
+                    console.log('User kicked successfully after audio & caption.');
                 } catch (err) {
                     console.error('Failed to kick user or send audio:', err);
                     await sock.sendMessage(chatId, { text: '_Failed to kick user. Make sure bot is admin._' });

@@ -17,10 +17,16 @@ async function UploadFileCatbox(filePath) {
             knownLength: fileStats.size
         });
 
+        // bot-hosting.net പോലെയുള്ള സെർവറുകളിൽ 412 എറർ വരാതിരിക്കാൻ ആവശ്യമായ കൃത്യമായ ഹെഡറുകൾ
         const response = await axios.post("https://catbox.moe/user/api.php", form, {
             headers: { 
                 ...form.getHeaders(),
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': '*/*',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive',
+                'Origin': 'https://catbox.moe',
+                'Referer': 'https://catbox.moe/'
             },
             maxContentLength: Infinity,
             maxBodyLength: Infinity,

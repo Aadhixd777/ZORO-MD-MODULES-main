@@ -125,7 +125,7 @@ async function helpCommand(sock, chatId, message) {
 ‎│➽ .${transformText('alive')}
 ‎│➽ .${transformText('tts')}
 ‎│➽ .${transformText('owner')}
-│➽ .${transformText('realowner')}
+‎│➽ .${transformText('realowner')}
 ‎│➽ .${transformText('joke')}
 ‎│➽ .${transformText('quote')}
 ‎│➽ .${transformText('fact')}
@@ -146,7 +146,6 @@ async function helpCommand(sock, chatId, message) {
 ‎│➽ .${transformText('img')}
 ‎│➽ .${transformText('pinterestimg')}
 ‎│➽ .${transformText('bingimg')}
-‎│➽ .${transformText('realowner')}
 ‎│➽ .${transformText('solve')}
 ‎│➽ .${transformText('age')}
 ‎│➽ .${transformText('fliptext')}
@@ -335,6 +334,10 @@ async function helpCommand(sock, chatId, message) {
 ‎╰────────────────◇
 
 ‎╭▣ 🖼️ ${transformText('ANIME COMMANDS')} ▣
+‎│➽ .${transformText('anime')} [${transformText('name')}]
+‎│➽ .${transformText('anime couple')}
+‎│➽ .${transformText('anime girl')}
+‎│➽ .${transformText('anime boy')}
 ‎│➽ .${transformText('animu')}
 ‎│➽ .${transformText('neko')}
 ‎│➽ .${transformText('waifu')}

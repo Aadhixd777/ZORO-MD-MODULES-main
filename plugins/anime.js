@@ -19,8 +19,6 @@ async function sendAnimu(sock, chatId, message, type) {
     const res = await axios.get(endpoint);
     const data = res.data || {};
 
-    // Prefer link (gif/image). Send as sticker if applicable; fallback to image
-    // helper to convert media buffer to sticker webp
     async function convertMediaToSticker(mediaBuffer, isAnimated) {
         const tmpDir = path.join(process.cwd(), 'tmp');
         if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
@@ -39,8 +37,6 @@ async function sendAnimu(sock, chatId, message, type) {
         });
 
         let webpBuffer = fs.readFileSync(output);
-
-        // Add sticker metadata
         const img = new webp.Image();
         await img.load(webpBuffer);
 
@@ -56,7 +52,6 @@ async function sendAnimu(sock, chatId, message, type) {
         img.exif = exif;
 
         const finalBuffer = await img.save(null);
-
         try { fs.unlinkSync(input); } catch {}
         try { fs.unlinkSync(output); } catch {}
         return finalBuffer;
@@ -68,7 +63,6 @@ async function sendAnimu(sock, chatId, message, type) {
         const isGifLink = lower.endsWith('.gif');
         const isImageLink = lower.match(/\.(jpg|jpeg|png|webp)$/);
 
-        // Convert all media (GIFs and images) to stickers
         if (isGifLink || isImageLink) {
             try {
                 const resp = await axios.get(link, {
@@ -78,61 +72,94 @@ async function sendAnimu(sock, chatId, message, type) {
                 });
                 const mediaBuf = Buffer.from(resp.data);
                 const stickerBuf = await convertMediaToSticker(mediaBuf, isGifLink);
-                await sock.sendMessage(
-                    chatId,
-                    { sticker: stickerBuf },
-                    { quoted: message }
-                );
+                await sock.sendMessage(chatId, { sticker: stickerBuf }, { quoted: message });
                 return;
             } catch (error) {
                 console.error('Error converting media to sticker:', error);
             }
         }
 
-        // Fallback to image if conversion fails
         try {
-            await sock.sendMessage(
-                chatId,
-                { image: { url: link }, caption: `anime: ${type}` },
-                { quoted: message }
-            );
+            await sock.sendMessage(chatId, { image: { url: link }, caption: '𝗭𝗢𝗥𝗢 𝗕𝗬 𝗔𝗔𝗗𝗛𝗜𝗫𝗗👅' }, { quoted: message });
             return;
         } catch {}
     }
     if (data.quote) {
-        await sock.sendMessage(
-            chatId,
-            { text: data.quote },
-            { quoted: message }
-        );
+        await sock.sendMessage(chatId, { text: data.quote }, { quoted: message });
         return;
     }
 
-    await sock.sendMessage(
-        chatId,
-        { text: '❌ Failed to fetch animu.' },
-        { quoted: message }
-    );
+    await sock.sendMessage(chatId, { text: '❌ Failed to fetch animu.' }, { quoted: message });
 }
 
 async function animeCommand(sock, chatId, message, args) {
-    const subArg = args && args[0] ? args[0] : '';
-    const sub = normalizeType(subArg);
-
-    const supported = [
-        'nom', 'poke', 'cry', 'kiss', 'pat', 'hug', 'wink', 'face-palm', 'quote'
-    ];
+    const fullText = message.body ? message.body.trim().toLowerCase() : "";
+    const signature = "𝗭𝗢𝗥𝗢 𝗕𝗬 𝗔𝗔𝗗𝗛𝗜𝗫𝗗👅";
 
     try {
-        if (!sub) {
-            // Fetch supported types from API for dynamic help
-            try {
-                const res = await axios.get(ANIMU_BASE);
-                const apiTypes = res.data && res.data.types ? res.data.types.map(s => s.replace('/animu/', '')).join(', ') : supported.join(', ');
-                await sock.sendMessage(chatId, { text: `Usage: .animu <type>\nTypes: ${apiTypes}` }, { quoted: message });
-            } catch {
-                await sock.sendMessage(chatId, { text: `Usage: .animu <type>\nTypes: ${supported.join(', ')}` }, { quoted: message });
+        if (fullText === '.anime' || (!args || args.length === 0)) {
+            const menuText = 
+`╭━━━ 🎌 *ANIME MENU* 🎌━━━
+┃
+┃ • .anime [name]
+┃ • .anime couple
+┃ • .anime girl
+┃ • .anime boy
+┃ • .animu <type>
+┃
+╰━━━━━━━━━━━━━━━━━━━`;
+            await sock.sendMessage(chatId, { text: menuText }, { quoted: message });
+            return;
+        }
+
+        if (fullText.includes('couple')) {
+            const url = 'https://api.waifu.im/search?included_tags=couple';
+            const res = await axios.get(url);
+            const images = res.data.images;
+            if (images && images.length > 0) {
+                await sock.sendMessage(chatId, { image: { url: images[0].url }, caption: signature }, { quoted: message });
+                return;
             }
+        }
+        else if (fullText.includes('girl')) {
+            const url = 'https://api.waifu.im/search?included_tags=waifu';
+            const res = await axios.get(url);
+            const images = res.data.images;
+            if (images && images.length > 0) {
+                await sock.sendMessage(chatId, { image: { url: images[0].url }, caption: signature }, { quoted: message });
+                return;
+            }
+        }
+        else if (fullText.includes('boy')) {
+            const url = 'https://api.waifu.im/search?included_tags=boy';
+            const res = await axios.get(url);
+            const images = res.data.images;
+            if (images && images.length > 0) {
+                await sock.sendMessage(chatId, { image: { url: images[0].url }, caption: signature }, { quoted: message });
+                return;
+            }
+        }
+        else if (fullText.startsWith('.anime ') && args && args.length > 0) {
+            const query = args.join(' ');
+            const url = `https://api.jikan.moe/v4/characters?q=${encodeURIComponent(query)}&limit=1`;
+            const res = await axios.get(url);
+            const data = res.data.data;
+            if (data && data.length > 0) {
+                const imageUrl = data[0].images.jpg.image_url;
+                await sock.sendMessage(chatId, { image: { url: imageUrl }, caption: signature }, { quoted: message });
+                return;
+            } else {
+                await sock.sendMessage(chatId, { text: '❌ Character not found!' }, { quoted: message });
+                return;
+            }
+        }
+
+        const subArg = args && args[0] ? args[0] : '';
+        const sub = normalizeType(subArg);
+        const supported = ['nom', 'poke', 'cry', 'kiss', 'pat', 'hug', 'wink', 'face-palm', 'quote'];
+
+        if (!sub) {
+            await sock.sendMessage(chatId, { text: `Usage: .animu <type>\nTypes: ${supported.join(', ')}` }, { quoted: message });
             return;
         }
 
@@ -142,12 +169,11 @@ async function animeCommand(sock, chatId, message, args) {
         }
 
         await sendAnimu(sock, chatId, message, sub);
+
     } catch (err) {
-        console.error('Error in animu command:', err);
-        await sock.sendMessage(chatId, { text: '❌ An error occurred while fetching animu.' }, { quoted: message });
+        console.error('Error in anime command:', err);
+        await sock.sendMessage(chatId, { text: '❌ An error occurred while fetching anime.' }, { quoted: message });
     }
 }
 
 module.exports = { animeCommand };
-
-

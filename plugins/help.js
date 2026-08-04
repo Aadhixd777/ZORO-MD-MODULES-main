@@ -187,6 +187,7 @@ async function helpCommand(sock, chatId, message) {
 ‎│➽ .${transformText('antisticker')}
 ‎│➽ .${transformText('antibot')}
 ‎│➽ .${transformText('antiforward')}
+‎│➽ .${transformText('antistatus')} ${transformText('on')} / ${transformText('off')}
 ‎╰────────────────◇
 
 ‎╭▣ 🔒 ${transformText('OWNER COMMANDS')} ▣

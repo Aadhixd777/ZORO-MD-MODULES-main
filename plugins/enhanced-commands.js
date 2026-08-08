@@ -45,7 +45,6 @@ async function approveCommand(sock, chatId, message, args, senderId) {
     }
 
     try {
-        // Check if sender and bot are admins
         const isAdmin = require('../lib/isAdmin');
         const { isSenderAdmin, isBotAdmin } = await isAdmin(sock, chatId, senderId);
         
@@ -64,7 +63,6 @@ async function approveCommand(sock, chatId, message, args, senderId) {
         const argStr = (args || '').trim().toLowerCase();
         
         if (argStr === 'all') {
-            // Approve all pending join requests
             const requests = await sock.groupRequestParticipantsList(chatId);
             if (!requests || requests.length === 0) {
                 return await sock.sendMessage(chatId, { text: '✅ No pending join requests found.' }, { quoted: message });
@@ -81,7 +79,6 @@ async function approveCommand(sock, chatId, message, args, senderId) {
             }, { quoted: message });
         }
 
-        // Reply-based approval
         const quotedMsg = message.message?.extendedTextMessage?.contextInfo;
         if (!quotedMsg) {
             return await sock.sendMessage(chatId, { 
@@ -112,7 +109,6 @@ async function disapproveCommand(sock, chatId, message, args, senderId) {
     }
 
     try {
-        // Check if sender and bot are admins
         const isAdmin = require('../lib/isAdmin');
         const { isSenderAdmin, isBotAdmin } = await isAdmin(sock, chatId, senderId);
         
@@ -131,7 +127,6 @@ async function disapproveCommand(sock, chatId, message, args, senderId) {
         const argStr = (args || '').trim().toLowerCase();
         
         if (argStr === 'all') {
-            // Reject all pending join requests
             const requests = await sock.groupRequestParticipantsList(chatId);
             if (!requests || requests.length === 0) {
                 return await sock.sendMessage(chatId, { text: '✅ No pending join requests found.' }, { quoted: message });
@@ -148,7 +143,6 @@ async function disapproveCommand(sock, chatId, message, args, senderId) {
             }, { quoted: message });
         }
 
-        // Reply-based rejection
         const quotedMsg = message.message?.extendedTextMessage?.contextInfo;
         if (!quotedMsg) {
             return await sock.sendMessage(chatId, { 
@@ -171,10 +165,6 @@ async function disapproveCommand(sock, chatId, message, args, senderId) {
 
 // ==================== GROUP PROFILE PICTURE COMMANDS ====================
 
-/**
- * Get group profile picture
- * Usage: .getgroupp
- */
 async function getGroupPPCommand(sock, chatId, message) {
     if (!chatId.endsWith('@g.us')) {
         return await sock.sendMessage(chatId, { text: '❌ This command only works in groups!' }, { quoted: message });
@@ -199,20 +189,14 @@ async function getGroupPPCommand(sock, chatId, message) {
     }
 }
 
-/**
- * Get user profile picture
- * Usage: Reply to a message and type .getpp
- */
 async function getPPCommand(sock, chatId, message) {
     try {
-        // Check if sender is the owner
         if (!message.key.fromMe) {
             return await sock.sendMessage(chatId, { 
                 text: '🚫 Only owner of the bot can use this command!' 
             }, { quoted: message });
         }
 
-        // Only check for quoted message (reply)
         const quotedMsg = message.message?.extendedTextMessage?.contextInfo;
         const quotedJid = quotedMsg?.participant || quotedMsg?.remoteJid;
 
@@ -252,10 +236,6 @@ async function getPPCommand(sock, chatId, message) {
 
 // ==================== GROUP ID COMMAND ====================
 
-/**
- * Get all group IDs
- * Usage: .groupid
- */
 async function groupIdCommand(sock, chatId, message) {
     try {
         const groups = await sock.groupFetchAllParticipating();
@@ -281,10 +261,6 @@ async function groupIdCommand(sock, chatId, message) {
 
 // ==================== GROUP OPEN/CLOSE COMMANDS ====================
 
-/**
- * Close group (only admins can send messages)
- * Usage: .close
- */
 async function closeGroupCommand(sock, chatId, message) {
     if (!chatId.endsWith('@g.us')) {
         return await sock.sendMessage(chatId, { text: '❌ This command only works in groups!' }, { quoted: message });
@@ -299,10 +275,6 @@ async function closeGroupCommand(sock, chatId, message) {
     }
 }
 
-/**
- * Open group (all members can send messages)
- * Usage: .open
- */
 async function openGroupCommand(sock, chatId, message) {
     if (!chatId.endsWith('@g.us')) {
         return await sock.sendMessage(chatId, { text: '❌ This command only works in groups!' }, { quoted: message });
@@ -319,16 +291,11 @@ async function openGroupCommand(sock, chatId, message) {
 
 // ==================== ANTI-STICKER COMMAND ====================
 
-/**
- * Toggle anti-sticker mode (auto-delete stickers)
- * Usage: .antisticker on/off
- */
 async function antistickerCommand(sock, chatId, message, args) {
     if (!chatId.endsWith('@g.us')) {
         return await sock.sendMessage(chatId, { text: '❌ This command only works in groups!' }, { quoted: message });
     }
 
-    // Check if sender is admin
     const isAdmin = require('../lib/isAdmin');
     const senderId = message.key.participant || message.key.remoteJid;
     const { isSenderAdmin } = await isAdmin(sock, chatId, senderId);
@@ -367,9 +334,6 @@ async function antistickerCommand(sock, chatId, message, args) {
     }, { quoted: message });
 }
 
-/**
- * Handle sticker detection for anti-sticker
- */
 async function handleAntiSticker(sock, chatId, message, senderId) {
     const state = readState('antisticker', {});
     if (!state[chatId]) return false;
@@ -389,10 +353,10 @@ async function handleAntiSticker(sock, chatId, message, senderId) {
     return false;
 }
 
-// ==================== ANTI-BOT COMMAND ====================
+// ==================== ADVANCED ANTI-BOT COMMAND ====================
 
 /**
- * Toggle anti-bot mode (auto-remove bots)
+ * Toggle anti-bot mode (auto-remove other active bots)
  * Usage: .antibot on/off
  */
 async function antibotCommand(sock, chatId, message, args) {
@@ -405,7 +369,7 @@ async function antibotCommand(sock, chatId, message, args) {
 
     if (!argStr || !['on', 'off', 'status'].includes(argStr)) {
         return await sock.sendMessage(chatId, {
-            text: `*ANTI-BOT*\n\n.antibot on - Enable auto-remove bots\n.antibot off - Disable\n.antibot status - Check status\n\nCurrent: ${state[chatId] ? 'ON' : 'OFF'}`
+            text: `*ANTI-BOT*\n\n.antibot on - Enable auto-remove other bots\n.antibot off - Disable\n.antibot status - Check status\n\nCurrent: ${state[chatId] ? 'ON' : 'OFF'}`
         }, { quoted: message });
     }
 
@@ -429,40 +393,79 @@ async function antibotCommand(sock, chatId, message, args) {
 }
 
 /**
- * Handle new participants for anti-bot
+ * Handle new participants joining for anti-bot
  */
 async function handleAntiBot(sock, chatId, participants) {
     const state = readState('antibot', {});
     if (!state[chatId]) return;
 
+    const botNumber = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+
     for (const participant of participants) {
-        // Check if it's a bot (typically bots have different JID formats)
-        if (participant.includes('bot') || participant.includes('Bot')) {
-            try {
+        try {
+            if (participant === botNumber) continue;
+
+            const isOtherBot = participant.includes(':') || 
+                               participant.includes('bot') || 
+                               participant.includes('Bot') ||
+                               participant.includes('baileys') ||
+                               participant.includes('md');
+
+            if (isOtherBot) {
                 await sock.groupParticipantsUpdate(chatId, [participant], 'remove');
                 await sock.sendMessage(chatId, {
-                    text: `🤖 Removed bot: @${participant.split('@')[0]}`,
+                    text: `🤖 *ZORO MD Anti-Bot Triggered!*\nDetected and removed another bot: @${participant.split('@')[0]}`,
                     mentions: [participant]
                 });
-            } catch (e) {
-                console.error('Anti-bot remove error:', e);
             }
+        } catch (e) {
+            console.error('Anti-bot remove error:', e);
         }
     }
 }
 
+/**
+ * Handle message detection: Detects other active bots safely via their JID/bot patterns 
+ * without affecting regular group members.
+ */
+async function handleAntiBotMessage(sock, chatId, message, senderId, userMessage) {
+    if (!chatId.endsWith('@g.us')) return false;
+
+    const state = readState('antibot', {});
+    if (!state[chatId]) return false;
+
+    const botNumber = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+    if (senderId === botNumber) return false;
+
+    // Checks if the sender is an automated bot account based on its ID pattern,
+    // avoiding false positives on regular group members typing commands.
+    const isBotJidPattern = senderId.includes(':') || 
+                            senderId.includes('bot') || 
+                            senderId.includes('Bot') || 
+                            senderId.includes('baileys');
+
+    if (isBotJidPattern) {
+        try {
+            await sock.groupParticipantsUpdate(chatId, [senderId], 'remove');
+            await sock.sendMessage(chatId, {
+                text: `🤖 *ZORO MD Anti-Bot Triggered!*\nDetected another active bot response/activity. Removed: @${senderId.split('@')[0]}`,
+                mentions: [senderId]
+            });
+            return true;
+        } catch (e) {
+            console.error('Anti-bot message action error:', e);
+        }
+    }
+    return false;
+}
+
 // ==================== ANTI-FORWARD COMMAND ====================
 
-/**
- * Toggle anti-forward mode (delete forwarded messages)
- * Usage: .antiforward on/off
- */
 async function antiforwardCommand(sock, chatId, message, args) {
     if (!chatId.endsWith('@g.us')) {
         return await sock.sendMessage(chatId, { text: '❌ This command only works in groups!' }, { quoted: message });
     }
 
-    // Check if sender is admin
     const isAdmin = require('../lib/isAdmin');
     const senderId = message.key.participant || message.key.remoteJid;
     const { isSenderAdmin } = await isAdmin(sock, chatId, senderId);
@@ -501,14 +504,10 @@ async function antiforwardCommand(sock, chatId, message, args) {
     }, { quoted: message });
 }
 
-/**
- * Handle forward detection
- */
 async function handleAntiForward(sock, chatId, message, senderId) {
     const state = readState('antiforward', {});
     if (!state[chatId]) return false;
 
-    // Check if message is forwarded
     const isForwarded = message.message?.extendedTextMessage?.contextInfo?.isForwarded ||
                        message.message?.imageMessage?.contextInfo?.isForwarded ||
                        message.message?.videoMessage?.contextInfo?.isForwarded;
@@ -530,10 +529,6 @@ async function handleAntiForward(sock, chatId, message, senderId) {
 
 // ==================== MEDIA CONVERSION COMMANDS ====================
 
-/**
- * Convert video to audio (optimized for speed)
- * Usage: .toaudio (reply to video)
- */
 async function toAudioCommand(sock, chatId, message) {
     try {
         const quotedMsg = message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
@@ -576,7 +571,6 @@ async function toAudioCommand(sock, chatId, message) {
             ptt: false
         }, { quoted: message });
 
-        // Cleanup
         fs.unlinkSync(inputPath);
         fs.unlinkSync(outputPath);
     } catch (error) {
@@ -585,10 +579,6 @@ async function toAudioCommand(sock, chatId, message) {
     }
 }
 
-/**
- * Convert video to video note (rounded)
- * Usage: .volvideo (reply to video)
- */
 async function volvideoCommand(sock, chatId, message) {
     try {
         const quotedMsg = message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
@@ -616,10 +606,6 @@ async function volvideoCommand(sock, chatId, message) {
     }
 }
 
-/**
- * Convert media to view once
- * Usage: .toviewonce (reply to image/video/audio)
- */
 async function toViewOnceCommand(sock, chatId, message) {
     try {
         const quotedMsg = message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
@@ -670,14 +656,9 @@ async function toViewOnceCommand(sock, chatId, message) {
     }
 }
 
-/**
- * Edit caption of sent media
- * Usage: .editcaption new caption text (reply to bot's media message)
- */
 async function editCaptionCommand(sock, chatId, message, args) {
     try {
         const quotedMsg = message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-        const quotedKey = message.message?.extendedTextMessage?.contextInfo?.stanzaId;
         
         if (!quotedMsg || (!quotedMsg.imageMessage && !quotedMsg.videoMessage)) {
             return await sock.sendMessage(chatId, { text: '❌ Please reply to an image or video message!' }, { quoted: message });
@@ -689,7 +670,6 @@ async function editCaptionCommand(sock, chatId, message, args) {
             return await sock.sendMessage(chatId, { text: '❌ Please provide a new caption!\nUsage: .editcaption <new caption>' }, { quoted: message });
         }
 
-        // Delete old message and resend with new caption
         if (quotedMsg.imageMessage) {
             const stream = await downloadContentFromMessage(quotedMsg.imageMessage, 'image');
             let buffer = Buffer.from([]);
@@ -723,10 +703,6 @@ async function editCaptionCommand(sock, chatId, message, args) {
 
 // ==================== BLOCK/UNBLOCK COMMANDS ====================
 
-/**
- * Block user (reply to their message)
- * Usage: .block (reply to user)
- */
 async function blockCommand(sock, chatId, message) {
     try {
         const quotedMsg = message.message?.extendedTextMessage?.contextInfo;
@@ -747,10 +723,6 @@ async function blockCommand(sock, chatId, message) {
     }
 }
 
-/**
- * Unblock all blocked users
- * Usage: .unblockall
- */
 async function unblockAllCommand(sock, chatId, message) {
     try {
         const blockedList = await sock.fetchBlocklist();
@@ -774,12 +746,7 @@ async function unblockAllCommand(sock, chatId, message) {
 
 // ==================== AUTO-REACTION COMMAND ====================
 
-/**
- * Toggle auto-reaction (pm/gr)
- * Usage: .autoreaction pm on/off or .autoreaction gr on/off
- */
 async function autoreactionCommand(sock, chatId, message, args) {
-    // Check if sender is the owner
     if (!message.key.fromMe) {
         return await sock.sendMessage(chatId, { 
             text: '🚫 Only owner of the bot can use this command!' 
@@ -823,9 +790,6 @@ async function autoreactionCommand(sock, chatId, message, args) {
     }, { quoted: message });
 }
 
-/**
- * Handle auto-reaction for messages (Optimized for speed)
- */
 async function handleAutoReaction(sock, chatId, message, isGroup) {
     try {
         const defaultReactions = [
@@ -870,10 +834,6 @@ async function handleAutoReaction(sock, chatId, message, isGroup) {
 
 // ==================== REAL OWNER COMMAND ====================
 
-/**
- * Display real owner information with auto-updating age
- * Usage: .realowner
- */
 async function realownerCommand(sock, chatId, message) {
     try {
         const axios = require('axios');
@@ -951,41 +911,27 @@ END:VCARD`;
 
 // Export all commands
 module.exports = {
-    // Group join requests
     approveCommand,
     disapproveCommand,
-    
-    // Profile pictures
     getGroupPPCommand,
     getPPCommand,
-    
-    // Group management
     groupIdCommand,
     closeGroupCommand,
     openGroupCommand,
-    
-    // Anti features
     antistickerCommand,
     handleAntiSticker,
     antibotCommand,
     handleAntiBot,
+    handleAntiBotMessage,
     antiforwardCommand,
     handleAntiForward,
-    
-    // Media conversion
     toAudioCommand,
     volvideoCommand,
     toViewOnceCommand,
     editCaptionCommand,
-    
-    // Block/Unblock
     blockCommand,
     unblockAllCommand,
-    
-    // Auto-reaction
     autoreactionCommand,
     handleAutoReaction,
-    
-    // Real owner
     realownerCommand
 };

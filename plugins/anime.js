@@ -16,7 +16,9 @@ function normalizeType(input) {
 
 async function sendAnimu(sock, chatId, message, type) {
     const endpoint = `${ANIMU_BASE}/${type}`;
-    const res = await axios.get(endpoint);
+    const res = await axios.get(endpoint, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+    });
     const data = res.data || {};
 
     async function convertMediaToSticker(mediaBuffer, isAnimated) {
@@ -68,7 +70,7 @@ async function sendAnimu(sock, chatId, message, type) {
                 const resp = await axios.get(link, {
                     responseType: 'arraybuffer',
                     timeout: 15000,
-                    headers: { 'User-Agent': 'Mozilla/5.0' }
+                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
                 });
                 const mediaBuf = Buffer.from(resp.data);
                 const stickerBuf = await convertMediaToSticker(mediaBuf, isGifLink);
@@ -116,7 +118,9 @@ async function animeCommand(sock, chatId, message, args) {
 
         if (subCommand === 'couple' || subCommand === 'girl' || subCommand === 'boy') {
             const url = 'https://nekos.best/api/v2/waifu';
-            const res = await axios.get(url);
+            const res = await axios.get(url, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+            });
             const images = res.data.results;
             if (images && images.length > 0) {
                 await sock.sendMessage(chatId, { image: { url: images[0].url }, caption: signature }, { quoted: message });
@@ -126,7 +130,9 @@ async function animeCommand(sock, chatId, message, args) {
         else if (queryArgs.length > 0 || (subCommand && !['nom', 'poke', 'cry', 'kiss', 'pat', 'hug', 'wink', 'face-palm', 'quote'].includes(subCommand))) {
             const query = [subCommand, ...queryArgs].join(' ');
             const url = `https://api.jikan.moe/v4/characters?q=${encodeURIComponent(query)}&limit=1`;
-            const res = await axios.get(url);
+            const res = await axios.get(url, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+            });
             const data = res.data.data;
             if (data && data.length > 0) {
                 const imageUrl = data[0].images.jpg.image_url;

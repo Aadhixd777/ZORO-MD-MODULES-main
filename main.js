@@ -1219,11 +1219,13 @@ async function handleMessages(sock, messageUpdate, printLog) {
                     await miscCommand(sock, chatId, message, args);
                 }
                 break;
+            case userMessage.startsWith('.anime'):
             case userMessage.startsWith('.animu'):
                 {
-                    const parts = userMessage.trim().split(/\s+/);
+                    const parts = rawText.trim().split(/\s+/);
                     const args = parts.slice(1);
                     await animeCommand(sock, chatId, message, args);
+                    commandExecuted = true;
                 }
                 break;
             case userMessage.startsWith('.nom'):

@@ -3,6 +3,16 @@ const os = require('os');
 const fs = require('fs');
 const path = require('path');
 
+const imageUrls = [
+    "https://files.catbox.moe/o6cxcz.jpg",
+    "https://files.catbox.moe/9fxrv8.jpg",
+    "https://files.catbox.moe/ik3wje.jpg",
+    "https://files.catbox.moe/nbz0o0.jpg",
+    "https://files.catbox.moe/kfop9g.jpg",
+    "https://files.catbox.moe/srzqxk.jpg",
+    "https://files.catbox.moe/3i4oyx.jpg"
+];
+
 function formatTime(seconds) {
     const days = Math.floor(seconds / (24 * 60 * 60));
     seconds = seconds % (24 * 60 * 60);
@@ -46,16 +56,13 @@ function getBotMode() {
 
 async function aliveCommand(sock, chatId, message) {
     try {
-        // Calculate speed (ping) live
         const start = Date.now();
         const tempMsg = await sock.sendMessage(chatId, { text: '⚡ Checking...' }, { quoted: message });
         const end = Date.now();
         const ping = Math.round((end - start) / 2);
         
-        // Delete the temporary 'Checking...' message
         await sock.sendMessage(chatId, { delete: tempMsg.key });
         
-        // Fetch system information
         const uptimeInSeconds = process.uptime();
         const uptimeFormatted = formatTime(uptimeInSeconds);
         const currentTime = getEastAfricaTime();
@@ -64,7 +71,6 @@ async function aliveCommand(sock, chatId, message) {
         const freeMem = (os.freemem() / (1024 * 1024 * 1024)).toFixed(2);
         const usedMem = (totalMem - freeMem).toFixed(2);
 
-        // Your styled Alive message
         const aliveMessage = `
 ╭━━━━━━━━━━━━━━━━━━━━━╮
 ┃  ✨𝗭𝗢𝗥𝗢 𝐌𝐃 ✨
@@ -92,12 +98,10 @@ async function aliveCommand(sock, chatId, message) {
   
   © 𝗣𝗼𝘄𝗲𝗿𝗲𝗱 𝗯𝘆 𝗔𝗮𝗱𝗵𝗶𝘅𝗱`;
 
-        // Image URL
-        const imageUrl = "https://i.postimg.cc/TY3zG950/zoro-md.jpg"; 
+        const randomImageUrl = imageUrls[Math.floor(Math.random() * imageUrls.length)];
 
-        // Send image with the information as a caption
         await sock.sendMessage(chatId, {
-            image: { url: imageUrl },
+            image: { url: randomImageUrl },
             caption: aliveMessage.trim()
         }, { quoted: message });
 

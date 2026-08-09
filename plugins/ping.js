@@ -80,7 +80,7 @@ async function pingCommand(sock, chatId, message) {
 *━━━━━━━━━━━━━━━━━━━━━━━━━━━*
 > *© 𝗢𝘄𝗻𝗲𝗿 & 𝗗𝗲𝘃𝗲𝗹𝗼𝗽𝗲𝗱 𝗯𝘆 👑 𝗔𝗮𝗱𝗵𝗶𝘅𝗱 ⚡*`;
 
-        const imageUrl = "https://i.postimg.cc/wjdj0ZG1/zoro.jpg"; 
+        const imageUrl = "https://files.catbox.moe/5ayv13.jpg"; 
         const bgmPath = './media/zoro_bgm.mp3'; 
 
         // 1. Send the image with the premium caption

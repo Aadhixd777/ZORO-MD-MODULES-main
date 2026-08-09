@@ -114,28 +114,10 @@ async function animeCommand(sock, chatId, message, args) {
         const subCommand = args[0].toLowerCase();
         const queryArgs = args.slice(1);
 
-        if (subCommand === 'couple') {
-            const url = 'https://api.waifu.im/search?included_tags=couple';
+        if (subCommand === 'couple' || subCommand === 'girl' || subCommand === 'boy') {
+            const url = 'https://nekos.best/api/v2/waifu';
             const res = await axios.get(url);
-            const images = res.data.images;
-            if (images && images.length > 0) {
-                await sock.sendMessage(chatId, { image: { url: images[0].url }, caption: signature }, { quoted: message });
-                return;
-            }
-        }
-        else if (subCommand === 'girl') {
-            const url = 'https://api.waifu.im/search?included_tags=waifu';
-            const res = await axios.get(url);
-            const images = res.data.images;
-            if (images && images.length > 0) {
-                await sock.sendMessage(chatId, { image: { url: images[0].url }, caption: signature }, { quoted: message });
-                return;
-            }
-        }
-        else if (subCommand === 'boy') {
-            const url = 'https://api.waifu.im/search?included_tags=boy';
-            const res = await axios.get(url);
-            const images = res.data.images;
+            const images = res.data.results;
             if (images && images.length > 0) {
                 await sock.sendMessage(chatId, { image: { url: images[0].url }, caption: signature }, { quoted: message });
                 return;

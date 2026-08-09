@@ -835,14 +835,14 @@ async function realownerCommand(sock, chatId, message) {
         
         let age = somaliaTime.getFullYear() - birthDate.getFullYear();
         const monthDiff = somaliaTime.getMonth() - birthDate.getMonth();
-        const dayDiff = somaliaTime.getDate() - birthDate.2Date();
+        const dayDiff = somaliaTime.getDate() - birthDate.getDate();
         
         if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
             age--;
         }
         
         const nextBirthday = new Date(somaliaTime.getFullYear(), birthDate.getMonth(), birthDate.getDate());
-        if (nextBirthday < somalia*Time) {
+        if (nextBirthday < somaliaTime) {
             nextBirthday.setFullYear(somaliaTime.getFullYear() + 1);
         }
         const daysUntilBirthday = Math.ceil((nextBirthday - somaliaTime) / (1000 * 60 * 60 * 24));
@@ -875,7 +875,7 @@ TEL;waid=918136880986:918136880986
 NOTE:Age: ${age} | Location: Kerala
 END:VCARD`;
 
-The imageUrl = 'https://i.postimg.cc/LsML554Y/zoro-md.jpg';
+        const imageUrl = 'https://i.postimg.cc/LsML554Y/zoro-md.jpg';
         const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
         const imageBuffer = Buffer.from(imageResponse.data);
 

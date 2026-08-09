@@ -93,18 +93,17 @@ async function sendAnimu(sock, chatId, message, type) {
 }
 
 async function animeCommand(sock, chatId, message, args) {
-    const fullText = message.body ? message.body.trim().toLowerCase() : "";
     const signature = "𝗭𝗢𝗥𝗢 𝗕𝗬 𝗔𝗔𝗗𝗛𝗜𝗫𝗗👅";
 
     try {
-        if (fullText === '.anime' || (!args || args.length === 0)) {
+        if (!args || args.length === 0) {
             const menuText = 
 `╭━━━ 🎌 *ANIME MENU* 🎌━━━
 ┃
-┃ • .anime [name]
 ┃ • .anime couple
 ┃ • .anime girl
 ┃ • .anime boy
+┃ • .anime [character name]
 ┃ • .animu <type>
 ┃
 ╰━━━━━━━━━━━━━━━━━━━`;
@@ -112,7 +111,10 @@ async function animeCommand(sock, chatId, message, args) {
             return;
         }
 
-        if (fullText.includes('couple')) {
+        const subCommand = args[0].toLowerCase();
+        const queryArgs = args.slice(1);
+
+        if (subCommand === 'couple') {
             const url = 'https://api.waifu.im/search?included_tags=couple';
             const res = await axios.get(url);
             const images = res.data.images;
@@ -121,7 +123,7 @@ async function animeCommand(sock, chatId, message, args) {
                 return;
             }
         }
-        else if (fullText.includes('girl')) {
+        else if (subCommand === 'girl') {
             const url = 'https://api.waifu.im/search?included_tags=waifu';
             const res = await axios.get(url);
             const images = res.data.images;
@@ -130,7 +132,7 @@ async function animeCommand(sock, chatId, message, args) {
                 return;
             }
         }
-        else if (fullText.includes('boy')) {
+        else if (subCommand === 'boy') {
             const url = 'https://api.waifu.im/search?included_tags=boy';
             const res = await axios.get(url);
             const images = res.data.images;
@@ -139,8 +141,8 @@ async function animeCommand(sock, chatId, message, args) {
                 return;
             }
         }
-        else if (fullText.startsWith('.anime ') && args && args.length > 0) {
-            const query = args.join(' ');
+        else if (queryArgs.length > 0 || (subCommand && !['nom', 'poke', 'cry', 'kiss', 'pat', 'hug', 'wink', 'face-palm', 'quote'].includes(subCommand))) {
+            const query = [subCommand, ...queryArgs].join(' ');
             const url = `https://api.jikan.moe/v4/characters?q=${encodeURIComponent(query)}&limit=1`;
             const res = await axios.get(url);
             const data = res.data.data;
@@ -154,14 +156,8 @@ async function animeCommand(sock, chatId, message, args) {
             }
         }
 
-        const subArg = args && args[0] ? args[0] : '';
-        const sub = normalizeType(subArg);
+        const sub = normalizeType(subCommand);
         const supported = ['nom', 'poke', 'cry', 'kiss', 'pat', 'hug', 'wink', 'face-palm', 'quote'];
-
-        if (!sub) {
-            await sock.sendMessage(chatId, { text: `Usage: .animu <type>\nTypes: ${supported.join(', ')}` }, { quoted: message });
-            return;
-        }
 
         if (!supported.includes(sub)) {
             await sock.sendMessage(chatId, { text: `❌ Unsupported type: ${sub}. Try one of: ${supported.join(', ')}` }, { quoted: message });

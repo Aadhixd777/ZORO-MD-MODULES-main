@@ -3,14 +3,19 @@ const os = require('os');
 const fs = require('fs');
 const path = require('path');
 
-const imageUrls = [
+// List of media URLs (Images and Videos) for random selection
+const mediaUrls = [
+    // Images
     "https://files.catbox.moe/o6cxcz.jpg",
     "https://files.catbox.moe/9fxrv8.jpg",
     "https://files.catbox.moe/ik3wje.jpg",
     "https://files.catbox.moe/nbz0o0.jpg",
     "https://files.catbox.moe/kfop9g.jpg",
     "https://files.catbox.moe/srzqxk.jpg",
-    "https://files.catbox.moe/3i4oyx.jpg"
+    "https://files.catbox.moe/3i4oyx.jpg",
+    // Videos
+    "https://files.catbox.moe/vy5vyt.mp4",
+    "https://files.catbox.moe/m8h87j.mp4"
 ];
 
 function formatTime(seconds) {
@@ -98,11 +103,13 @@ async function aliveCommand(sock, chatId, message) {
   
   © 𝗣𝗼𝘄𝗲𝗿𝗲𝗱 𝗯𝘆 𝗔𝗮𝗱𝗵𝗶𝘅𝗱`;
 
-        const randomImageUrl = imageUrls[Math.floor(Math.random() * imageUrls.length)];
+        const randomMediaUrl = mediaUrls[Math.floor(Math.random() * mediaUrls.length)];
+        const isVideo = randomMediaUrl.endsWith('.mp4');
 
         await sock.sendMessage(chatId, {
-            image: { url: randomImageUrl },
-            caption: aliveMessage.trim()
+            [isVideo ? 'video' : 'image']: { url: randomMediaUrl },
+            caption: aliveMessage.trim(),
+            ...(isVideo ? { mimetype: 'video/mp4', ptv: false } : {})
         }, { quoted: message });
 
     } catch (error) {

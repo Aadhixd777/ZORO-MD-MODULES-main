@@ -428,9 +428,20 @@ async function handleAntiBotMessage(sock, chatId, message, senderId, userMessage
     
     if (senderId === botNumber || OWNER_NUMBERS.includes(senderId)) return false;
 
+    const msgText = (
+        message.message?.conversation || 
+        message.message?.extendedTextMessage?.text || 
+        message.message?.imageMessage?.caption || 
+        message.message?.videoMessage?.caption || 
+        ''
+    ).toLowerCase();
+
     const isBotJidPattern = senderId.includes(':') || 
                             senderId.toLowerCase().includes('bot') || 
-                            senderId.includes('baileys');
+                            senderId.toLowerCase().includes('baileys') ||
+                            msgText.includes('bot info') || 
+                            msgText.includes('erfan-md') ||
+                            msgText.includes('runtime:');
 
     if (isBotJidPattern) {
         try {

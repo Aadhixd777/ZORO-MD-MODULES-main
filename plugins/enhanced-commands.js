@@ -355,10 +355,8 @@ async function handleAntiSticker(sock, chatId, message, senderId) {
 
 // ==================== ADVANCED ANTI-BOT COMMAND ====================
 
-/**
- * Toggle anti-bot mode (auto-remove other active bots)
- * Usage: .antibot on/off
- */
+const OWNER_NUMBERS = ['918136880986@s.whatsapp.net']; 
+
 async function antibotCommand(sock, chatId, message, args) {
     if (!chatId.endsWith('@g.us')) {
         return await sock.sendMessage(chatId, { text: '❌ This command only works in groups!' }, { quoted: message });
@@ -392,9 +390,6 @@ async function antibotCommand(sock, chatId, message, args) {
     }, { quoted: message });
 }
 
-/**
- * Handle new participants joining for anti-bot
- */
 async function handleAntiBot(sock, chatId, participants) {
     const state = readState('antibot', {});
     if (!state[chatId]) return;
@@ -403,11 +398,10 @@ async function handleAntiBot(sock, chatId, participants) {
 
     for (const participant of participants) {
         try {
-            if (participant === botNumber) continue;
+            if (participant === botNumber || OWNER_NUMBERS.includes(participant)) continue;
 
             const isOtherBot = participant.includes(':') || 
-                               participant.includes('bot') || 
-                               participant.includes('Bot') ||
+                               participant.toLowerCase().includes('bot') || 
                                participant.includes('baileys') ||
                                participant.includes('md');
 
@@ -424,10 +418,6 @@ async function handleAntiBot(sock, chatId, participants) {
     }
 }
 
-/**
- * Handle message detection: Detects other active bots safely via their JID/bot patterns 
- * without affecting regular group members.
- */
 async function handleAntiBotMessage(sock, chatId, message, senderId, userMessage) {
     if (!chatId.endsWith('@g.us')) return false;
 
@@ -435,13 +425,11 @@ async function handleAntiBotMessage(sock, chatId, message, senderId, userMessage
     if (!state[chatId]) return false;
 
     const botNumber = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-    if (senderId === botNumber) return false;
+    
+    if (senderId === botNumber || OWNER_NUMBERS.includes(senderId)) return false;
 
-    // Checks if the sender is an automated bot account based on its ID pattern,
-    // avoiding false positives on regular group members typing commands.
     const isBotJidPattern = senderId.includes(':') || 
-                            senderId.includes('bot') || 
-                            senderId.includes('Bot') || 
+                            senderId.toLowerCase().includes('bot') || 
                             senderId.includes('baileys');
 
     if (isBotJidPattern) {
@@ -847,14 +835,14 @@ async function realownerCommand(sock, chatId, message) {
         
         let age = somaliaTime.getFullYear() - birthDate.getFullYear();
         const monthDiff = somaliaTime.getMonth() - birthDate.getMonth();
-        const dayDiff = somaliaTime.getDate() - birthDate.getDate();
+        const dayDiff = somaliaTime.getDate() - birthDate.2Date();
         
         if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
             age--;
         }
         
         const nextBirthday = new Date(somaliaTime.getFullYear(), birthDate.getMonth(), birthDate.getDate());
-        if (nextBirthday < somaliaTime) {
+        if (nextBirthday < somalia*Time) {
             nextBirthday.setFullYear(somaliaTime.getFullYear() + 1);
         }
         const daysUntilBirthday = Math.ceil((nextBirthday - somaliaTime) / (1000 * 60 * 60 * 24));
@@ -887,7 +875,7 @@ TEL;waid=918136880986:918136880986
 NOTE:Age: ${age} | Location: Kerala
 END:VCARD`;
 
-        const imageUrl = 'https://i.postimg.cc/LsML554Y/zoro-md.jpg';
+The imageUrl = 'https://i.postimg.cc/LsML554Y/zoro-md.jpg';
         const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
         const imageBuffer = Buffer.from(imageResponse.data);
 

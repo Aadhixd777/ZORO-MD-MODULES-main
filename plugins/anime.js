@@ -5,8 +5,8 @@ const path = require('path');
 const webp = require('node-webpmux');
 const crypto = require('crypto');
 
-const RAPID_API_KEY = '38ccfa2636msh4949622f763d847p1d96ffjsn6eefced19bc6';
-const RAPID_API_HOST = 'waifu-it.p.rapidapi.com';
+const RAPID_API_KEY = 'fee7676de9mshd66f451a0e3edd5p17df22jsna9d6ecd07013';
+const RAPID_API_HOST = 'pinterest23.p.rapidapi.com';
 const ANIMU_BASE = 'https://api.some-random-api.com/animu';
 
 function normalizeType(input) {
@@ -60,24 +60,7 @@ async function sendAnimu(sock, chatId, message, type) {
     try {
         const res = await axios.get(endpoint, { timeout: 8000 });
         data = res.data || {};
-    } catch (e) {
-        try {
-            const options = {
-                method: 'GET',
-                url: `https://${RAPID_API_HOST}/waifu`,
-                params: { name: type },
-                headers: {
-                    'X-RapidAPI-Key': RAPID_API_KEY,
-                    'X-RapidAPI-Host': RAPID_API_HOST
-                },
-                timeout: 8000
-            };
-            const fallbackRes = await axios.request(options);
-            if (fallbackRes.data) {
-                data.link = fallbackRes.data.url || fallbackRes.data.image;
-            }
-        } catch (err) {}
-    }
+    } catch (e) {}
 
     const mediaLink = data.link || data.url;
     if (mediaLink) {
@@ -137,11 +120,11 @@ async function animeCommand(sock, chatId, message, args) {
         let searchQuery = subCommand;
 
         if (subCommand === 'girl') {
-            searchQuery = 'Waifu';
+            searchQuery = 'anime girl cute aesthetic';
         } else if (subCommand === 'boy') {
-            searchQuery = 'Naruto';
+            searchQuery = 'anime boy aesthetic';
         } else if (subCommand === 'couple') {
-            searchQuery = 'Romance';
+            searchQuery = 'anime couple matching dp';
         } else if (queryArgs.length > 0 || !['nom', 'poke', 'cry', 'kiss', 'pat', 'hug', 'wink', 'face-palm', 'quote'].includes(subCommand)) {
             searchQuery = [subCommand, ...queryArgs].join(' ');
         }
@@ -158,32 +141,52 @@ async function animeCommand(sock, chatId, message, args) {
 
         const options = {
             method: 'GET',
-            url: `https://${RAPID_API_HOST}/waifu`,
-            params: { name: searchQuery },
+            url: `https://${RAPID_API_HOST}/search`,
+            params: { query: searchQuery },
             headers: {
                 'X-RapidAPI-Key': RAPID_API_KEY,
                 'X-RapidAPI-Host': RAPID_API_HOST
             },
-            timeout: 10000
+            timeout: 12000
         };
 
         const response = await axios.request(options);
         const data = response.data;
 
-        let imageUrl = data.url || data.image || data.results?.[0]?.url;
-
-        if (!imageUrl && typeof data === 'string' && data.startsWith('http')) {
-            imageUrl = data;
+        let results = [];
+        if (Array.isArray(data)) {
+            results = data;
+        } else if (data.result && Array.isArray(data.result)) {
+            results = data.result;
+        } else if (data.data && Array.isArray(data.data)) {
+            results = data.data;
+        } else if (data.pins && Array.isArray(data.pins)) {
+            results = data.pins;
         }
 
-        if (!imageUrl) {
-            imageUrl = "https://images.unsplash.com/photo-1578632767115-351597cf2477";
+        let imageUrls = [];
+        for (let item of results) {
+            let img = item.images?.orig?.url || item.image || item.url || item.images?.['736x']?.url;
+            if (img && typeof img === 'string') {
+                imageUrls.push(img);
+            }
         }
 
-        await sock.sendMessage(chatId, { 
-            image: { url: imageUrl }, 
-            caption: signature 
-        }, { quoted: message });
+        if (imageUrls.length === 0) {
+            return await sock.sendMessage(chatId, { text: '❌ Character or anime not found!' }, { quoted: message });
+        }
+
+        if (subCommand === 'couple' && imageUrls.length >= 2) {
+            await sock.sendMessage(chatId, { image: { url: imageUrls[0] }, caption: `${signature}\n*(Boy / Part 1)*` }, { quoted: message });
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await sock.sendMessage(chatId, { image: { url: imageUrls[1] }, caption: `${signature}\n*(Girl / Part 2)*` }, { quoted: message });
+        } else {
+            const targetUrl = imageUrls[0];
+            await sock.sendMessage(chatId, { 
+                image: { url: targetUrl }, 
+                caption: signature 
+            }, { quoted: message });
+        }
 
         try { await sock.sendMessage(chatId, { react: { text: '✅', key: message.key } }); } catch {}
 

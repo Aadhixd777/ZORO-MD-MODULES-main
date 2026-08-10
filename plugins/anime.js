@@ -5,7 +5,7 @@ const path = require('path');
 const webp = require('node-webpmux');
 const crypto = require('crypto');
 
-const RAPID_API_KEY = '59660ea980msh58bb403149b4410p1d66b6jsn68ba86313226';
+const RAPID_API_KEY = '38ccfa2636msh4949622f763d847p1d96ffjsn6eefced19bc6';
 const RAPID_API_HOST = 'waifu-it.p.rapidapi.com';
 const ANIMU_BASE = 'https://api.some-random-api.com/animu';
 

@@ -44,8 +44,9 @@ async function songCommand(sock, chatId, message) {
                 return await sock.sendMessage(chatId, { text: "❌ Invalid YouTube URL!" }, { quoted: message });
             }
 
-            const RAPID_API_KEY = '59660ea980msh58bb403149b4410p1d66b6jsn68ba86313226'; 
-            const RAPID_API_HOST = 'youtube-mp36.p.rapidapi.com';
+            // 🔑 Updated with your new RapidAPI Credentials for YouTube
+            const RAPID_API_KEY = '84883e8cadmsh429310ccf9c50b7p1667b9jsn363053514da2'; 
+            const RAPID_API_HOST = 'youtube-mp3-audio-video-downloader.p.rapidapi.com';
 
             if (incomingText === '1') {
                 await sock.sendMessage(chatId, { text: `📥 Downloading Audio (MP3)... Please wait.` }, { quoted: message });
@@ -53,14 +54,14 @@ async function songCommand(sock, chatId, message) {
                 let dlUrl = null;
                 try {
                     const response = await axios.get(`https://${RAPID_API_HOST}/dl`, {
-                        params: { id: videoId },
+                        params: { id: videoId, url: targetUrl },
                         headers: {
                             'X-RapidAPI-Key': RAPID_API_KEY,
                             'X-RapidAPI-Host': RAPID_API_HOST
                         },
                         timeout: 25000
                     });
-                    dlUrl = response.data?.link || response.data?.download || response.data?.url;
+                    dlUrl = response.data?.link || response.data?.download || response.data?.url || response.data?.dl;
                 } catch (e) {
                     console.error('RapidAPI Error:', e.message);
                 }
@@ -85,11 +86,17 @@ async function songCommand(sock, chatId, message) {
             } else if (incomingText === '2') {
                 await sock.sendMessage(chatId, { text: `📥 Downloading Video (MP4)... Please wait.` }, { quoted: message });
 
-                const videoApi = `https://api.siputzx.my.id/api/s/ytmp4?url=${encodeURIComponent(targetUrl)}`;
                 let videoDlUrl = null;
                 try {
-                    const res = await axios.get(videoApi, { timeout: 20000 });
-                    videoDlUrl = res.data?.data?.dl || res.data?.result?.download?.url || res.data?.result?.url;
+                    const response = await axios.get(`https://${RAPID_API_HOST}/dl`, {
+                        params: { id: videoId, url: targetUrl },
+                        headers: {
+                            'X-RapidAPI-Key': RAPID_API_KEY,
+                            'X-RapidAPI-Host': RAPID_API_HOST
+                        },
+                        timeout: 25000
+                    });
+                    videoDlUrl = response.data?.link || response.data?.download || response.data?.url || response.data?.dl;
                 } catch (e) {
                     console.error('Video API Error:', e.message);
                 }

@@ -182,7 +182,7 @@ async function animeCommand(sock, chatId, message, args) {
             return;
         }
 
-        const sub = normalizeType(subCommand);
+        const sub = normalizetype(subCommand);
         const supported = ['nom', 'poke', 'cry', 'kiss', 'pat', 'hug', 'wink', 'face-palm', 'quote'];
 
         if (!supported.includes(sub)) {

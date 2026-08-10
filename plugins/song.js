@@ -44,7 +44,6 @@ async function songCommand(sock, chatId, message) {
                 return await sock.sendMessage(chatId, { text: "❌ Invalid YouTube URL!" }, { quoted: message });
             }
 
-            // 🔑 Updated with your new RapidAPI Credentials for YouTube
             const RAPID_API_KEY = '84883e8cadmsh429310ccf9c50b7p1667b9jsn363053514da2'; 
             const RAPID_API_HOST = 'youtube-mp3-audio-video-downloader.p.rapidapi.com';
 
@@ -53,7 +52,8 @@ async function songCommand(sock, chatId, message) {
 
                 let dlUrl = null;
                 try {
-                    const response = await axios.get(`https://${RAPID_API_HOST}/dl`, {
+                    // Updated endpoint based on your screenshot
+                    const response = await axios.get(`https://${RAPID_API_HOST}/getDirectURLForDownloadMP3`, {
                         params: { id: videoId, url: targetUrl },
                         headers: {
                             'X-RapidAPI-Key': RAPID_API_KEY,
@@ -88,7 +88,7 @@ async function songCommand(sock, chatId, message) {
 
                 let videoDlUrl = null;
                 try {
-                    const response = await axios.get(`https://${RAPID_API_HOST}/dl`, {
+                    const response = await axios.get(`https://${RAPID_API_HOST}/getDirectURLForDownloadMP3`, {
                         params: { id: videoId, url: targetUrl },
                         headers: {
                             'X-RapidAPI-Key': RAPID_API_KEY,

@@ -58,7 +58,6 @@ function downloadFile(url, dest, visited = new Set()) {
     });
 }
 
-// Pure JS zip extractor without depending on server tools (unzip/7z)
 async function extractZip(zipPath, outDir) {
     try {
         const AdmZip = require('adm-zip');
@@ -100,7 +99,6 @@ function copyRecursive(src, dest, ignore = [], relative = '', outList = []) {
 }
 
 async function updateViaZip(sock, chatId, message, zipOverride) {
-    // നിങ്ങളുടെ ഒറിജിനൽ റെപ്പോസിറ്ററിയുടെ മെയിൻ സിപ്പ് ലിങ്ക് ഇവിടെ കൃത്യമായി നൽകിയിരിക്കുന്നു
     const defaultUrl = 'https://github.com/Aadhixd777/ZORO-MD-MODULES-main/archive/refs/heads/main.zip';
     const zipUrl = (zipOverride || settings.updateZipUrl || process.env.UPDATE_ZIP_URL || defaultUrl).trim();
 
@@ -133,7 +131,7 @@ async function restartProcess(sock, chatId, message) {
     } catch {}
     
     setTimeout(() => {
-        process.exit(0);
+        process.exit(1);
     }, 1000);
 }
 
@@ -145,7 +143,6 @@ async function updateCommand(sock, chatId, message, senderIsSudo, zipOverride) {
     try {
         await sock.sendMessage(chatId, { text: '🔄 Updating the bot, please wait…' }, { quoted: message });
         
-        // ഗിറ്റ് വഴി ചെയ്യുന്നതിന് പകരം നേരിട്ട് സിപ്പ് ഫയൽ ഡൗൺലോഡ് ചെയ്ത് അപ്ഡേറ്റ് ആകുന്ന രീതിയിലേക്ക് മാറ്റിയിരിക്കുന്നു
         await updateViaZip(sock, chatId, message, zipOverride);
         
         await restartProcess(sock, chatId, message);

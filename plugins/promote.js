@@ -1,5 +1,7 @@
 const isAdmin = require('../lib/isAdmin');
 
+const OWNER_NUMBER = "918136880986"; // നിങ്ങളുടെ ഓണർ നമ്പർ
+
 // Function to handle manual promotions via command
 async function promoteCommand(sock, chatId, mentionedJids, message) {
     try {
@@ -11,10 +13,15 @@ async function promoteCommand(sock, chatId, mentionedJids, message) {
             return;
         }
 
+        // Get sender ID correctly for group messages
+        const senderId = message.key.participant || message.participant || message.key.remoteJid;
+        const cleanSenderNum = senderId.split('@')[0].split(':')[0];
+
+        // 🎯 1. ബോട്ട് ഓണറായ നിങ്ങളാണോ എന്ന് നോക്കുന്നു
+        const isOwner = message.key.fromMe || cleanSenderNum === OWNER_NUMBER;
+
         // Check admin status first, before any other operations
         try {
-            // Get sender ID correctly for group messages
-            const senderId = message.key.participant || message.participant || message.key.remoteJid;
             const adminStatus = await isAdmin(sock, chatId, senderId);
             
             if (!adminStatus.isBotAdmin) {
@@ -24,7 +31,8 @@ async function promoteCommand(sock, chatId, mentionedJids, message) {
                 return;
             }
 
-            if (!adminStatus.isSenderAdmin) {
+            // 🎯 2. നിങ്ങൾ ഓണർ അല്ലെങ്കിൽ, സാധാരണ യൂസർ അഡ്മിൻ ആണോ എന്ന് പരിശോധിക്കും
+            if (!isOwner && !adminStatus.isSenderAdmin) {
                 await sock.sendMessage(chatId, { 
                     text: '❌ Error: Only group admins can use the promote command.'
                 });
@@ -49,26 +57,29 @@ async function promoteCommand(sock, chatId, mentionedJids, message) {
             userToPromote = [message.message.extendedTextMessage.contextInfo.participant];
         }
         
-        // If no user found through either method
+        // 🎯 3. ഓണറായ നിങ്ങൾ ആരെയും മെൻഷൻ ചെയ്യാതെയോ അല്ലെങ്കിൽ സ്വന്തം മെസ്സേജ് റിപ്ലൈ ചെയ്തോ .promote അടിച്ചാൽ നിങ്ങളെത്തന്നെ അഡ്മിൻ ആക്കും
         if (userToPromote.length === 0) {
-            await sock.sendMessage(chatId, { 
-                text: '❌ Error: Please mention the user or reply to their message to promote!'
-            });
-            return;
+            if (isOwner) {
+                userToPromote = [senderId];
+            } else {
+                await sock.sendMessage(chatId, { 
+                    text: '❌ Error: Please mention the user or reply to their message to promote!'
+                });
+                return;
+            }
         }
 
         await sock.groupParticipantsUpdate(chatId, userToPromote, "promote");
         
         // Get usernames for each promoted user
         const usernames = await Promise.all(userToPromote.map(async jid => {
-            
             return `@${jid.split('@')[0]}`;
         }));
 
         // Get promoter's name (the bot user in this case)
         const promoterJid = sock.user.id;
         
-        const promotionMessage = `*『 𝐆𝐑𝐎𝐔𝐋 𝐏𝐑𝐎𝐌𝐎𝐓𝐈𝐎𝐍 』*\n\n` +
+        const promotionMessage = `*『 𝐆𝐑𝐎𝐔𝐏 𝐏𝐑𝐎𝐌𝐎𝐓𝐈𝐎𝐍 』*\n\n` +
             `👥 *𝐏𝐫𝐨𝐦𝐨𝐭𝐞𝐝 𝐔𝐬𝐞𝐫${userToPromote.length > 1 ? 's' : ''}:*\n` +
             `${usernames.map(name => `• ${name}`).join('\n')}\n\n` +
             `👑 *𝐏𝐫𝐨𝐦𝐨𝐭𝐞𝐝 𝐁𝐲:* @${promoterJid.split('@')[0]}\n\n` +
@@ -93,19 +104,16 @@ async function handlePromotionEvent(sock, groupId, participants, author) {
 
         // Get usernames for promoted participants
         const promotedUsernames = await Promise.all(participants.map(async jid => {
-            // Handle case where jid might be an object or not a string
             const jidString = typeof jid === 'string' ? jid : (jid.id || jid.toString());
             return `@${jidString.split('@')[0]} `;
         }));
 
         let promotedBy;
-        let mentionList = participants.map(jid => {
-            // Ensure all mentions are proper JID strings
+        let mentionList = permissions = participants.map(jid => {
             return typeof jid === 'string' ? jid : (jid.id || jid.toString());
         });
 
         if (author && author.length > 0) {
-            // Ensure author has the correct format
             const authorJid = typeof author === 'string' ? author : (author.id || author.toString());
             promotedBy = `@${authorJid.split('@')[0]}`;
             mentionList.push(authorJid);

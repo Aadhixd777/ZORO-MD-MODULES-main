@@ -13,29 +13,6 @@ function run(cmd) {
     });
 }
 
-async function hasGitRepo() {
-    const gitDir = path.join(process.cwd(), '.git');
-    if (!fs.existsSync(gitDir)) return false;
-    try {
-        await run('git --version');
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-async function updateViaGit() {
-    const oldRev = (await run('git rev-parse HEAD').catch(() => 'unknown')).trim();
-    await run('git fetch --all --prune');
-    const newRev = (await run('git rev-parse origin/main')).trim();
-    const alreadyUpToDate = oldRev === newRev;
-    const commits = alreadyUpToDate ? '' : await run(`git log --pretty=format:"%h %s (%an)" ${oldRev}..${newRev}`).catch(() => '');
-    const files = alreadyUpToDate ? '' : await run(`git diff --name-status ${oldRev} ${newRev}`).catch(() => '');
-    await run(`git reset --hard ${newRev}`);
-    await run('git clean -fd');
-    return { oldRev, newRev, alreadyUpToDate, commits, files };
-}
-
 function downloadFile(url, dest, visited = new Set()) {
     return new Promise((resolve, reject) => {
         try {
@@ -89,7 +66,6 @@ async function extractZip(zipPath, outDir) {
         zip.extractAllTo(outDir, true);
         return;
     } catch (e) {
-        // Fallback to system tools if adm-zip is missing
         if (process.platform === 'win32') {
             const cmd = `powershell -NoProfile -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${outDir.replace(/\\/g, '/')}' -Force"`;
             await run(cmd);
@@ -124,7 +100,7 @@ function copyRecursive(src, dest, ignore = [], relative = '', outList = []) {
 }
 
 async function updateViaZip(sock, chatId, message, zipOverride) {
-    // Default URL pointing directly to main branch zip
+    // നിങ്ങളുടെ ഒറിജിനൽ റെപ്പോസിറ്ററിയുടെ മെയിൻ സിപ്പ് ലിങ്ക് ഇവിടെ കൃത്യമായി നൽകിയിരിക്കുന്നു
     const defaultUrl = 'https://github.com/Aadhixd777/ZORO-MD-MODULES-main/archive/refs/heads/main.zip';
     const zipUrl = (zipOverride || settings.updateZipUrl || process.env.UPDATE_ZIP_URL || defaultUrl).trim();
 
@@ -141,7 +117,7 @@ async function updateViaZip(sock, chatId, message, zipOverride) {
     const [root] = fs.readdirSync(extractTo).map(n => path.join(extractTo, n));
     const srcRoot = fs.existsSync(root) && fs.lstatSync(root).isDirectory() ? root : extractTo;
 
-    const ignore = ['node_modules', '.git', 'session', 'tmp', 'temp', 'data', 'baileys_store.json'];
+    const ignore = ['node_modules', '.git', 'session', 'tmp', 'temp', 'data', 'baileys_store.json', 'config.js', 'settings.js'];
     const copied = [];
     
     copyRecursive(srcRoot, process.cwd(), ignore, '', copied);
@@ -169,12 +145,8 @@ async function updateCommand(sock, chatId, message, senderIsSudo, zipOverride) {
     try {
         await sock.sendMessage(chatId, { text: '🔄 Updating the bot, please wait…' }, { quoted: message });
         
-        if (await hasGitRepo()) {
-            await updateViaGit();
-            await run('npm install --no-audit --no-fund');
-        } else {
-            await updateViaZip(sock, chatId, message, zipOverride);
-        }
+        // ഗിറ്റ് വഴി ചെയ്യുന്നതിന് പകരം നേരിട്ട് സിപ്പ് ഫയൽ ഡൗൺലോഡ് ചെയ്ത് അപ്ഡേറ്റ് ആകുന്ന രീതിയിലേക്ക് മാറ്റിയിരിക്കുന്നു
+        await updateViaZip(sock, chatId, message, zipOverride);
         
         await restartProcess(sock, chatId, message);
     } catch (err) {

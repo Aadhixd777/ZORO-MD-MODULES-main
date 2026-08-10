@@ -25,13 +25,13 @@ async function instagramCommand(sock, chatId, message) {
 
         const igUrl = match[0];
 
-        // 🔑 Your RapidAPI Credentials
-        const rapidApiKey = "59660ea980msh58bb403149b4410p1d66b6jsn68ba86313226";
+        // 🔑 Updated RapidAPI Credentials from your screenshot
+        const rapidApiKey = "84883e8cadmsh429310ccf9c50b7p1667b9jsn363053514da2";
         const rapidApiHost = "instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com";
 
         const options = {
             method: 'GET',
-            url: `https://${rapidApiHost}/v1/social/posts`,
+            url: `https://${rapidApiHost}/v1/instagram/post`,
             params: { url: igUrl },
             headers: {
                 'X-RapidAPI-Key': rapidApiKey,
@@ -45,7 +45,7 @@ async function instagramCommand(sock, chatId, message) {
         let mediaUrl = null;
         if (response.data) {
             const data = response.data.result || response.data.data || response.data;
-            mediaUrl = Array.isArray(data) ? (data[0].url || data[0].downloadUrl) : (data.url || data.downloadUrl);
+            mediaUrl = Array.isArray(data) ? (data[0].url || data[0].downloadUrl) : (data.url || data.downloadUrl || data.link);
         }
 
         if (!mediaUrl) {

@@ -13,7 +13,7 @@ async function spotifyCommand(sock, chatId, message) {
 
         if (!query) {
             return await sock.sendMessage(chatId, { 
-                text: '⭐ *ZORO-MD SPOTIFY* ⭐\n\n❌ Usage: .spotify <song name or link>\n💡 Example: .spotify Con Calma' 
+                text: '⭐ *ZORO-MD SPOTIFY* ⭐\n\n❌ Usage: .spotify <Spotify Track Link>\n💡 Example: .spotify https://open.spotify.com/track/...' 
             }, { quoted: message });
         }
 
@@ -22,96 +22,48 @@ async function spotifyCommand(sock, chatId, message) {
         let trackInfo = null;
         let audioBuffer = null;
 
-        // 🔥 WORKING MULTI-API FALLBACK SYSTEM
-        const apis = [
-            `https://api.vreden.web.id/api/spotify?query=${encodeURIComponent(query)}`,
-            `https://api.agatz.xyz/api/spotify?message=${encodeURIComponent(query)}`,
-            `https://api.dreaded.site/api/spotify?query=${encodeURIComponent(query)}`
-        ];
-
-        // METHOD 1
         try {
-            console.log('Trying Spotify API 1...');
-            const res = await axios.get(apis[0], { timeout: 20000 });
-            if (res.data?.result) {
-                const r = res.data.result;
-                const downloadUrl = r.music || r.downloadUrl || r.url || r.link;
+            console.log('Fetching from RapidAPI Spotify Downloader...');
+            
+            const response = await axios.get('https://spotify-music-mp3-downloader-api.p.rapidapi.com/download', {
+                params: { link: query },
+                headers: {
+                    'content-type': 'application/json',
+                    'x-rapidapi-key': '84883e8cadmsh429310ccf9c50b7p1667b9jsn363053514da2',
+                    'x-rapidapi-host': 'spotify-music-mp3-downloader-api.p.rapidapi.com'
+                },
+                timeout: 30000
+            });
+
+            const resData = response.data;
+            console.log('API Response:', resData);
+
+            if (resData) {
+                const downloadUrl = resData.link || resData.downloadUrl || resData.url || resData.audio || resData.dl;
+                
                 if (downloadUrl) {
                     trackInfo = {
-                        title: r.title || r.name || query,
-                        artist: r.artists || r.artist || 'Spotify Artist',
-                        thumbnail: r.cover || r.thumbnail || r.image,
-                        url: r.external_url || 'https://spotify.com'
+                        title: resData.title || resData.name || 'Spotify Song',
+                        artist: resData.artist || resData.artists || 'Spotify Artist',
+                        thumbnail: resData.cover || resData.thumbnail || resData.image,
+                        url: query
                     };
 
                     const audioRes = await axios.get(downloadUrl, { responseType: 'arraybuffer', timeout: 60000 });
                     audioBuffer = Buffer.from(audioRes.data);
-                    console.log('✅ Spotify API 1 Success');
+                    console.log('✅ RapidAPI Spotify Success');
                 }
             }
         } catch (e) {
-            console.log('Spotify API 1 failed:', e.message);
-        }
-
-        // METHOD 2: Fallback
-        if (!audioBuffer) {
-            try {
-                console.log('Trying Spotify API 2...');
-                const res = await axios.get(apis[1], { timeout: 20000 });
-                if (res.data?.data) {
-                    const r = res.data.data;
-                    const downloadUrl = r.downloadUrl || r.url || r.link || r.music;
-                    if (downloadUrl) {
-                        trackInfo = {
-                            title: r.title || r.name || query,
-                            artist: r.artists || r.artist || 'Spotify Artist',
-                            thumbnail: r.cover || r.thumbnail || r.image,
-                            url: r.external_url || 'https://spotify.com'
-                        };
-
-                        const audioRes = await axios.get(downloadUrl, { responseType: 'arraybuffer', timeout: 60000 });
-                        audioBuffer = Buffer.from(audioRes.data);
-                        console.log('✅ Spotify API 2 Success');
-                    }
-                }
-            } catch (e) {
-                console.log('Spotify API 2 failed:', e.message);
-            }
-        }
-
-        // METHOD 3: Fallback
-        if (!audioBuffer) {
-            try {
-                console.log('Trying Spotify API 3...');
-                const res = await axios.get(apis[2], { timeout: 20000 });
-                if (res.data?.result) {
-                    const r = res.data.result;
-                    const downloadUrl = r.audio || r.downloadUrl || r.url;
-                    if (downloadUrl) {
-                        trackInfo = {
-                            title: r.title || r.name || query,
-                            artist: r.artist || 'Spotify Artist',
-                            thumbnail: r.thumbnail || r.cover,
-                            url: 'https://spotify.com'
-                        };
-
-                        const audioRes = await axios.get(downloadUrl, { responseType: 'arraybuffer', timeout: 60000 });
-                        audioBuffer = Buffer.from(audioRes.data);
-                        console.log('✅ Spotify API 3 Success');
-                    }
-                }
-            } catch (e) {
-                console.log('Spotify API 3 failed:', e.message);
-            }
+            console.log('RapidAPI Spotify failed:', e.message);
         }
 
         if (!audioBuffer) {
             return await sock.sendMessage(chatId, { 
-                text: '❌ Failed to fetch Spotify audio. All servers are currently busy.' 
+                text: '❌ Failed to fetch audio. Make sure you are providing a valid Spotify track link.' 
             }, { quoted: message });
         }
 
-        // Thumbnail context setup
         let thumbBuffer = null;
         try {
             if (trackInfo?.thumbnail) {
@@ -131,7 +83,6 @@ async function spotifyCommand(sock, chatId, message) {
             }
         };
 
-        // Send Audio File
         await sock.sendMessage(chatId, {
             audio: audioBuffer,
             mimetype: 'audio/mpeg',
@@ -144,7 +95,7 @@ async function spotifyCommand(sock, chatId, message) {
 
     } catch (error) {
         console.error('[SPOTIFY] error:', error?.message || error);
-        await sock.sendMessage(chatId, { text: '❌ Failed to fetch Spotify audio. Try another query later.' }, { quoted: message });
+        await sock.sendMessage(chatId, { text: '❌ Failed to process Spotify request.' }, { quoted: message });
     }
 }
 

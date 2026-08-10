@@ -5,15 +5,10 @@ const path = require('path');
 const webp = require('node-webpmux');
 const crypto = require('crypto');
 
-const ANIMU_BASE = 'https://api.some-random-api.com/animu';
+// നിങ്ങളുടെ Waifu.im API കീ ഇവിടെ കൃത്യമായി ചേർത്തിരിക്കുന്നു
+const WAIFU_IM_KEY = 'NAhfdsKyVhBZGSivhVCv0p7z9B86qMY0aQFfPoNdP8M';
 
-// Common headers configuration to avoid 403 Forbidden
-const apiHeaders = {
-    headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json, text/plain, */*'
-    }
-};
+const ANIMU_BASE = 'https://api.some-random-api.com/animu';
 
 function normalizeType(input) {
     const lower = (input || '').toLowerCase();
@@ -24,8 +19,21 @@ function normalizeType(input) {
 
 async function sendAnimu(sock, chatId, message, type) {
     const endpoint = `${ANIMU_BASE}/${type}`;
-    const res = await axios.get(endpoint, apiHeaders);
-    const data = res.data || {};
+    let data = {};
+    try {
+        const res = await axios.get(endpoint, { timeout: 8000 });
+        data = res.data || {};
+    } catch (e) {
+        try {
+            const fallbackRes = await axios.get(`https://api.waifu.im/search?included_tags=${type}`, {
+                headers: { 'Authorization': `Bearer ${WAIFU_IM_KEY}` },
+                timeout: 8000
+            });
+            if (fallbackRes.data && fallbackRes.data.images && fallbackRes.data.images.length > 0) {
+                data.link = fallbackRes.data.images[0].url;
+            }
+        } catch (err) {}
+    }
 
     async function convertMediaToSticker(mediaBuffer, isAnimated) {
         const tmpDir = path.join(process.cwd(), 'tmp');
@@ -65,18 +73,17 @@ async function sendAnimu(sock, chatId, message, type) {
         return finalBuffer;
     }
 
-    if (data.link) {
-        const link = data.link;
-        const lower = link.toLowerCase();
+    const mediaLink = data.link || data.url;
+    if (mediaLink) {
+        const lower = mediaLink.toLowerCase();
         const isGifLink = lower.endsWith('.gif');
         const isImageLink = lower.match(/\.(jpg|jpeg|png|webp)$/);
 
         if (isGifLink || isImageLink) {
             try {
-                const resp = await axios.get(link, {
+                const resp = await axios.get(mediaLink, {
                     responseType: 'arraybuffer',
-                    timeout: 15000,
-                    ...apiHeaders
+                    timeout: 10000
                 });
                 const mediaBuf = Buffer.from(resp.data);
                 const stickerBuf = await convertMediaToSticker(mediaBuf, isGifLink);
@@ -88,7 +95,7 @@ async function sendAnimu(sock, chatId, message, type) {
         }
 
         try {
-            await sock.sendMessage(chatId, { image: { url: link }, caption: '𝗭𝗢𝗥𝗢 𝗕𝗬 𝗔𝗔𝗗𝗛𝗜𝗫𝗗👅' }, { quoted: message });
+            await sock.sendMessage(chatId, { image: { url: mediaLink }, caption: '𝗭𝗢𝗥𝗢 𝗕𝗬 𝗔𝗔𝗗𝗛𝗜𝗫𝗗👅' }, { quoted: message });
             return;
         } catch {}
     }
@@ -122,28 +129,59 @@ async function animeCommand(sock, chatId, message, args) {
         const subCommand = args[0].toLowerCase();
         const queryArgs = args.slice(1);
 
-        if (subCommand === 'couple' || subCommand === 'girl' || subCommand === 'boy') {
-            const url = 'https://nekos.best/api/v2/waifu';
-            const res = await axios.get(url, apiHeaders);
-            const images = res.data.results;
-            if (images && images.length > 0) {
-                await sock.sendMessage(chatId, { image: { url: images[0].url }, caption: signature }, { quoted: message });
+        if (subCommand === 'girl') {
+            const res = await axios.get('https://api.waifu.im/search?included_tags=waifu', {
+                headers: { 'Authorization': `Bearer ${WAIFU_IM_KEY}` },
+                timeout: 8000
+            });
+            if (res.data && res.data.images && res.data.images.length > 0) {
+                await sock.sendMessage(chatId, { image: { url: res.data.images[0].url }, caption: signature }, { quoted: message });
+                return;
+            }
+        }
+        else if (subCommand === 'boy') {
+            const res = await axios.get('https://api.waifu.im/search?included_tags=maid', {
+                headers: { 'Authorization': `Bearer ${WAIFU_IM_KEY}` },
+                timeout: 8000
+            });
+            if (res.data && res.data.images && res.data.images.length > 0) {
+                await sock.sendMessage(chatId, { image: { url: res.data.images[0].url }, caption: signature }, { quoted: message });
+                return;
+            }
+        }
+        else if (subCommand === 'couple') {
+            const res = await axios.get('https://api.waifu.im/search?included_tags=marin-kitagawa', {
+                headers: { 'Authorization': `Bearer ${WAIFU_IM_KEY}` },
+                timeout: 8000
+            });
+            if (res.data && res.data.images && res.data.images.length > 0) {
+                await sock.sendMessage(chatId, { image: { url: res.data.images[0].url }, caption: signature }, { quoted: message });
                 return;
             }
         }
         else if (queryArgs.length > 0 || (subCommand && !['nom', 'poke', 'cry', 'kiss', 'pat', 'hug', 'wink', 'face-palm', 'quote'].includes(subCommand))) {
             const query = [subCommand, ...queryArgs].join(' ');
             const url = `https://api.jikan.moe/v4/characters?q=${encodeURIComponent(query)}&limit=1`;
-            const res = await axios.get(url, apiHeaders);
-            const data = res.data.data;
-            if (data && data.length > 0) {
-                const imageUrl = data[0].images.jpg.image_url;
-                await sock.sendMessage(chatId, { image: { url: imageUrl }, caption: signature }, { quoted: message });
-                return;
-            } else {
-                await sock.sendMessage(chatId, { text: '❌ Character not found!' }, { quoted: message });
-                return;
+            try {
+                const res = await axios.get(url, { timeout: 8000 });
+                const data = res.data.data;
+                if (data && data.length > 0) {
+                    const imageUrl = data[0].images.jpg.image_url;
+                    await sock.sendMessage(chatId, { image: { url: imageUrl }, caption: signature }, { quoted: message });
+                    return;
+                }
+            } catch (e) {
+                const fallbackRes = await axios.get('https://api.waifu.im/search?included_tags=waifu', {
+                    headers: { 'Authorization': `Bearer ${WAIFU_IM_KEY}` },
+                    timeout: 8000
+                });
+                if (fallbackRes.data && fallbackRes.data.images && fallbackRes.data.images.length > 0) {
+                    await sock.sendMessage(chatId, { image: { url: fallbackRes.data.images[0].url }, caption: signature }, { quoted: message });
+                    return;
+                }
             }
+            await sock.sendMessage(chatId, { text: '❌ Character not found!' }, { quoted: message });
+            return;
         }
 
         const sub = normalizeType(subCommand);

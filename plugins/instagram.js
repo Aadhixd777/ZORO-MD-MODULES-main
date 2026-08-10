@@ -25,13 +25,13 @@ async function instagramCommand(sock, chatId, message) {
 
         const igUrl = match[0];
 
-        // 🔑 Updated RapidAPI Credentials from your screenshot
-        const rapidApiKey = "84883e8cadmsh429310ccf9c50b7p1667b9jsn363053514da2";
-        const rapidApiHost = "instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com";
+        // 🔑 Updated RapidAPI Credentials from your new screenshot
+        const rapidApiKey = "59660ea980msh58bb403149b4410p1d66b6jsn68ba86313226";
+        const rapidApiHost = "instagram-reels-downloader-api.p.rapidapi.com";
 
         const options = {
             method: 'GET',
-            url: `https://${rapidApiHost}/v1/instagram/post`,
+            url: `https://${rapidApiHost}/download`,
             params: { url: igUrl },
             headers: {
                 'X-RapidAPI-Key': rapidApiKey,

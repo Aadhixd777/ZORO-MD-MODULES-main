@@ -5,9 +5,7 @@ const path = require('path');
 const webp = require('node-webpmux');
 const crypto = require('crypto');
 
-// നിങ്ങളുടെ Waifu.im API കീ ഇവിടെ കൃത്യമായി ചേർത്തിരിക്കുന്നു
-const WAIFU_IM_KEY = 'NAhfdsKyVhBZGSivhVCv0p7z9B86qMY0aQFfPoNdP8M';
-
+const WAIFU_IM_KEY = 'NAhfdsKyVhBZGSivhVCv0p7z9B86qMY0aQfPoNdP8M';
 const ANIMU_BASE = 'https://api.some-random-api.com/animu';
 
 function normalizeType(input) {

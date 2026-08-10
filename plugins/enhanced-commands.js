@@ -835,8 +835,6 @@ async function handleAutoReaction(sock, chatId, message, isGroup) {
 
 async function realownerCommand(sock, chatId, message) {
     try {
-        const axios = require('axios');
-        
         const birthDate = new Date('1111-11-11');
         const now = new Date();
         
@@ -876,7 +874,7 @@ async function realownerCommand(sock, chatId, message) {
 ━━━━━━━━━━━━━━━━━━━━
 
 💫 *Bot Owner & Developer*
-🚀 *Aadhixd,ZORO MD*
+🚀 *Aadhixd*
         `.trim();
 
         const vcard = `BEGIN:VCARD
@@ -886,18 +884,17 @@ TEL;waid=918136880986:918136880986
 NOTE:Age: ${age} | Location: Kerala
 END:VCARD`;
 
-        const imageUrl = 'https://i.postimg.cc/LsML554Y/zoro-md.jpg';
-        const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-        const imageBuffer = Buffer.from(imageResponse.data);
+        const videoUrl = 'https://files.catbox.moe/bkqy02.mp4';
 
         await sock.sendMessage(chatId, {
-            image: imageBuffer,
-            caption: ownerInfo
+            video: { url: videoUrl },
+            caption: ownerInfo,
+            mimetype: 'video/mp4'
         }, { quoted: message });
 
         await sock.sendMessage(chatId, {
             contacts: { 
-                displayName: 'ROMEO (ZORO MD)', 
+                displayName: 'Aadhixd (ZORO MD)', 
                 contacts: [{ vcard }] 
             }
         });

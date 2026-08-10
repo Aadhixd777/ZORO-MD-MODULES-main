@@ -182,7 +182,8 @@ async function animeCommand(sock, chatId, message, args) {
             return;
         }
 
-        const sub = normalizetype(subCommand);
+        // ഇവിടെയാണ് നേരത്തെ normalizetype എന്ന് തെറ്റായി കിടന്നിരുന്നത്, അത് ശരിയാക്കി normalizeType എന്നാക്കിയിട്ടുണ്ട്:
+        const sub = normalizeType(subCommand);
         const supported = ['nom', 'poke', 'cry', 'kiss', 'pat', 'hug', 'wink', 'face-palm', 'quote'];
 
         if (!supported.includes(sub)) {

@@ -25,12 +25,12 @@ async function spotifyCommand(sock, chatId, message) {
         try {
             console.log('Fetching from RapidAPI Spotify Downloader...');
             
-            const response = await axios.get('https://spotify-music-mp3-downloader-api.p.rapidapi.com/download', {
-                params: { link: query },
+            const response = await axios.get('https://spotify-downloader9.p.rapidapi.com/downloadSong', {
+                params: { songId: query },
                 headers: {
                     'content-type': 'application/json',
-                    'x-rapidapi-key': '84883e8cadmsh429310ccf9c50b7p1667b9jsn363053514da2',
-                    'x-rapidapi-host': 'spotify-music-mp3-downloader-api.p.rapidapi.com'
+                    'x-rapidapi-key': '16a174fe52mshb02d15219501300p182615jsne71ecfd86826',
+                    'x-rapidapi-host': 'spotify-downloader9.p.rapidapi.com'
                 },
                 timeout: 30000
             });

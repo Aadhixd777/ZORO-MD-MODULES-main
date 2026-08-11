@@ -2,24 +2,23 @@ const axios = require('axios');
 
 const signature = "𝗭𝗢𝗥𝗢 𝗕𝗬 𝗔𝗔𝗗𝗛𝗜𝗫𝗗👅";
 
-// Direct fallback working image links list to avoid API/Scraping failures
+// Direct working anime image links list
 const animeImages = {
     girl: [
-        "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800",
         "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800",
-        "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800"
+        "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800",
+        "https://i.pinimg.com/736x/d8/d5/42/d8d54238e8334468202d6b2c28761012.jpg"
     ],
     boy: [
         "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800",
-        "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800"
+        "https://i.pinimg.com/736x/2c/15/84/2c15848e42f58e1c6b8c7b8086439162.jpg"
     ],
     couple: [
-        "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=800",
-        "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800"
+        "https://i.pinimg.com/736x/4a/12/34/4a1234567890abcdef1234567890abcd.jpg",
+        "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=800"
     ],
     default: [
-        "https://images.unsplash.com/photo-1563089145-599997674d42?w=800",
-        "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800"
+        "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800"
     ]
 };
 

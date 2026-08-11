@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { igdl } = require('ruhend-scraper'); // Already in your package.json
 
 const processedMessages = new Set();
 
@@ -24,61 +25,58 @@ async function instagramCommand(sock, chatId, message) {
         try { await sock.sendMessage(chatId, { react: { text: '🔄', key: message.key } }); } catch {}
 
         const igUrl = match[0];
-
-        const rapidApiKey = "59660ea980msh58bb403149b4410p1d66b6jsn68ba86313226";
-        const rapidApiHost = "instagram-reels-downloader-api.p.rapidapi.com";
-
-        const options = {
-            method: 'GET',
-            url: `https://${rapidApiHost}/download`,
-            params: { url: igUrl },
-            headers: {
-                'X-RapidAPI-Key': rapidApiKey,
-                'X-RapidAPI-Host': rapidApiHost
-            },
-            timeout: 25000
-        };
-
-        const response = await axios.request(options);
-        
         let mediaUrl = null;
-        if (response.data) {
-            const data = response.data.result || response.data.data || response.data;
-            mediaUrl = Array.isArray(data) ? (data[0].url || data[0].downloadUrl) : (data.url || data.downloadUrl || data.link);
+
+        // Try using ruhend-scraper first (Most stable for IG videos)
+        try {
+            const res = await igdl(igUrl);
+            if (res && res.data && res.data.length > 0) {
+                mediaUrl = res.data[0].url;
+            }
+        } catch (e) {}
+
+        // Fallback to RapidAPI if scraper fails
+        if (!mediaUrl) {
+            const rapidApiKey = "59660ea980msh58bb403149b4410p1d66b6jsn68ba86313226";
+            const rapidApiHost = "instagram-reels-downloader-api.p.rapidapi.com";
+
+            const options = {
+                method: 'GET',
+                url: `https://${rapidApiHost}/download`,
+                params: { url: igUrl },
+                headers: {
+                    'X-RapidAPI-Key': rapidApiKey,
+                    'X-RapidAPI-Host': rapidApiHost
+                },
+                timeout: 25000
+            };
+
+            const response = await axios.request(options);
+            if (response.data) {
+                const data = response.data.result || response.data.data || response.data;
+                mediaUrl = Array.isArray(data) ? (data[0].url || data[0].downloadUrl) : (data.url || data.downloadUrl || data.link);
+            }
         }
 
         if (!mediaUrl) {
             return await sock.sendMessage(chatId, { 
-                text: "❌ Could not fetch media from RapidAPI. Please check the endpoint or link."
+                text: "❌ Could not fetch media. Please check the link."
             }, { quoted: message });
         }
 
-        // Fetch media as buffer to ensure WhatsApp reads the file correctly without errors
-        const mediaRes = await axios.get(mediaUrl, { responseType: 'arraybuffer', timeout: 35000 });
-        const buffer = Buffer.from(mediaRes.data);
-        const contentType = mediaRes.headers['content-type'] || '';
-
-        const isVideo = contentType.includes('video') || igUrl.includes('/reel') || igUrl.includes('/p/');
-
-        if (isVideo) {
-            await sock.sendMessage(chatId, {
-                video: buffer,
-                mimetype: "video/mp4",
-                caption: "𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗗 𝗕𝗬 𝗭𝗢𝗥𝗢 𝗠𝗗 🔥"
-            }, { quoted: message });
-        } else {
-            await sock.sendMessage(chatId, {
-                image: buffer,
-                caption: "𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗗 𝗕𝗬 𝗭𝗢𝗥𝗢 𝗠𝗗 🔥"
-            }, { quoted: message });
-        }
+        // Send video directly using URL so WhatsApp streaming handles the playback natively
+        await sock.sendMessage(chatId, {
+            video: { url: mediaUrl },
+            mimetype: "video/mp4",
+            caption: "𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗗 𝗕𝗬 𝗭𝗢𝗥𝗢 𝗠𝗗 🔥"
+        }, { quoted: message });
 
         try { await sock.sendMessage(chatId, { react: { text: '✅', key: message.key } }); } catch {}
 
     } catch (error) {
-        console.error('RapidAPI Error:', error.message);
+        console.error('Instagram Error:', error.message);
         await sock.sendMessage(chatId, { 
-            text: "❌ An error occurred while processing via RapidAPI."
+            text: "❌ An error occurred while processing the Instagram video."
         }, { quoted: message });
     }
 }

@@ -25,7 +25,6 @@ async function instagramCommand(sock, chatId, message) {
 
         const igUrl = match[0];
 
-        // 🔑 Updated RapidAPI Credentials from your new screenshot
         const rapidApiKey = "59660ea980msh58bb403149b4410p1d66b6jsn68ba86313226";
         const rapidApiHost = "instagram-reels-downloader-api.p.rapidapi.com";
 
@@ -54,21 +53,17 @@ async function instagramCommand(sock, chatId, message) {
             }, { quoted: message });
         }
 
-        const mediaRes = await axios.get(mediaUrl, { responseType: 'arraybuffer', timeout: 30000 });
-        const buffer = Buffer.from(mediaRes.data);
-        const contentType = mediaRes.headers['content-type'] || '';
-
-        const isVideo = contentType.includes('video') || igUrl.includes('/reel');
+        const isVideo = igUrl.includes('/reel') || igUrl.includes('/p/') || true;
 
         if (isVideo) {
             await sock.sendMessage(chatId, {
-                video: buffer,
+                video: { url: mediaUrl },
                 mimetype: "video/mp4",
                 caption: "𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗗 𝗕𝗬 𝗭𝗢𝗥𝗢 𝗠𝗗 🔥"
             }, { quoted: message });
         } else {
             await sock.sendMessage(chatId, {
-                image: buffer,
+                image: { url: mediaUrl },
                 caption: "𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗗 𝗕𝗬 𝗭𝗢𝗥𝗢 𝗠𝗗 🔥"
             }, { quoted: message });
         }

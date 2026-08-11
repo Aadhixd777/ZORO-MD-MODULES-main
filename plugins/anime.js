@@ -21,36 +21,41 @@ async function animeCommand(sock, chatId, message, args) {
         const query = args.join(' ').toLowerCase();
         let searchQuery = query;
 
-        const randomNum = Math.floor(Math.random() * 500);
         if (query === 'girl') {
-            searchQuery = `cute anime girl aesthetic wallpaper ${randomNum}`;
+            searchQuery = `cute anime girl aesthetic wallpaper`;
         } else if (query === 'boy') {
-            searchQuery = `cool anime boy aesthetic wallpaper ${randomNum}`;
+            searchQuery = `cool anime boy aesthetic wallpaper`;
         } else if (query === 'couple') {
-            searchQuery = `matching anime couple dp cute ${randomNum}`;
+            searchQuery = `matching anime couple dp cute`;
         } else {
-            searchQuery = `${query} anime wallpaper ${randomNum}`;
+            searchQuery = `${query} anime wallpaper`;
         }
 
         try { await sock.sendMessage(chatId, { react: { text: '🔄', key: message.key } }); } catch {}
 
-        const apiUrl = `https://bk9.fun/search/pinterest?q=${encodeURIComponent(searchQuery)}`;
-        const response = await axios.get(apiUrl, { timeout: 10000 });
+        // Direct Pinterest search scraper endpoint
+        const searchUrl = `https://www.pinterest.com/search/pins/?q=${encodeURIComponent(searchQuery)}`;
+        const htmlRes = await axios.get(searchUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            timeout: 10000
+        });
+
+        // Extract image URLs from Pinterest html using regex
+        const matches = htmlRes.data.match(/"(https:\/\/i\.pinimg\.com\/736x\/[^"]+\.(?:jpg|png))"/g);
         
-        const results = response.data?.result || response.data?.data || [];
-
-        if (!results || results.length === 0) {
+        if (!matches || matches.length === 0) {
             return await sock.sendMessage(chatId, { text: '❌ Character or anime not found!' }, { quoted: message });
         }
 
-        const randomItem = results[Math.floor(Math.random() * results.length)];
-        const imageUrl = typeof randomItem === 'string' ? randomItem : (randomItem.image || randomItem.url);
+        // Clean up extracted URLs
+        const imageUrls = matches.map(m => m.replace(/"/g, ''));
+        const uniqueUrls = [...new Set(imageUrls)];
 
-        if (!imageUrl) {
-            return await sock.sendMessage(chatId, { text: '❌ Character or anime not found!' }, { quoted: message });
-        }
+        const randomImage = uniqueUrls[Math.floor(Math.random() * uniqueUrls.length)];
 
-        const imgResp = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 10000 });
+        const imgResp = await axios.get(randomImage, { responseType: 'arraybuffer', timeout: 10000 });
         await sock.sendMessage(chatId, { 
             image: Buffer.from(imgResp.data), 
             caption: signature 

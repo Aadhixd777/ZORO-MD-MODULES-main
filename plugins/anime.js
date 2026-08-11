@@ -78,9 +78,7 @@ async function sendAnimu(sock, chatId, message, type) {
                 const stickerBuf = await convertMediaToSticker(mediaBuf, isGifLink);
                 await sock.sendMessage(chatId, { sticker: stickerBuf }, { quoted: message });
                 return;
-            } catch (error) {
-                console.error('Error converting media to sticker:', error);
-            }
+            } catch (error) {}
         }
 
         try {
@@ -166,7 +164,7 @@ async function animeCommand(sock, chatId, message, args) {
 
         let imageUrls = [];
         for (let item of results) {
-            let img = item.images?.orig?.url || item.image || item.url || item.images?.['736x']?.url;
+            let img = item.images?.orig?.url || item.image || item.url || item.images?.['736x']?.url || item.media?.image?.original?.url;
             if (img && typeof img === 'string') {
                 imageUrls.push(img);
             }
@@ -181,9 +179,8 @@ async function animeCommand(sock, chatId, message, args) {
             await new Promise(resolve => setTimeout(resolve, 1000));
             await sock.sendMessage(chatId, { image: { url: imageUrls[1] }, caption: `${signature}\n*(Girl / Part 2)*` }, { quoted: message });
         } else {
-            const targetUrl = imageUrls[0];
             await sock.sendMessage(chatId, { 
-                image: { url: targetUrl }, 
+                image: { url: imageUrls[0] }, 
                 caption: signature 
             }, { quoted: message });
         }

@@ -139,10 +139,10 @@ async function animeCommand(sock, chatId, message, args) {
 
         try { await sock.sendMessage(chatId, { react: { text: '🔄', key: message.key } }); } catch {}
 
-        // Updated for pinterest-scraper5 endpoint format
+        // Corrected endpoint to /search
         const options = {
             method: 'GET',
-            url: `https://${RAPID_API_HOST}/search/pins`,
+            url: `https://${RAPID_API_HOST}/search`,
             params: { query: searchQuery },
             headers: {
                 'X-RapidAPI-Key': RAPID_API_KEY,

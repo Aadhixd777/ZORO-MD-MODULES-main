@@ -5,8 +5,8 @@ const path = require('path');
 const webp = require('node-webpmux');
 const crypto = require('crypto');
 
-const RAPID_API_KEY = 'fee7676de9mshd66f451a0e3edd5p17df22jsna9d6ecd07013';
-const RAPID_API_HOST = 'pinterest23.p.rapidapi.com';
+const RAPID_API_KEY = 'f0fe3c0b36msh9024ada81ccd31ap152641jsn7290e25f40ce';
+const RAPID_API_HOST = 'pinterest-scraper5.p.rapidapi.com';
 const ANIMU_BASE = 'https://api.some-random-api.com/animu';
 
 function normalizeType(input) {
@@ -82,7 +82,8 @@ async function sendAnimu(sock, chatId, message, type) {
         }
 
         try {
-            await sock.sendMessage(chatId, { image: { url: mediaLink }, caption: '𝗭𝗢𝗥𝗢 𝗕𝗬 𝗔𝗔𝗗𝗛𝗜𝗫𝗗👅' }, { quoted: message });
+            const imgResp = await axios.get(mediaLink, { responseType: 'arraybuffer', timeout: 10000 });
+            await sock.sendMessage(chatId, { image: Buffer.from(imgResp.data), caption: '𝗭𝗢𝗥𝗢 𝗕𝗬 𝗔𝗔𝗗𝗛𝗜𝗫𝗗👅' }, { quoted: message });
             return;
         } catch {}
     }
@@ -117,7 +118,6 @@ async function animeCommand(sock, chatId, message, args) {
         const queryArgs = args.slice(1);
         let searchQuery = subCommand;
 
-        // Adding timestamp/random suffix to query so Pinterest returns fresh results every time
         const randomNum = Math.floor(Math.random() * 1000);
         if (subCommand === 'girl') {
             searchQuery = `cute anime girl aesthetic wallpaper ${randomNum}`;
@@ -139,9 +139,10 @@ async function animeCommand(sock, chatId, message, args) {
 
         try { await sock.sendMessage(chatId, { react: { text: '🔄', key: message.key } }); } catch {}
 
+        // Updated for pinterest-scraper5 endpoint format
         const options = {
             method: 'GET',
-            url: `https://${RAPID_API_HOST}/search`,
+            url: `https://${RAPID_API_HOST}/search/pins`,
             params: { query: searchQuery },
             headers: {
                 'X-RapidAPI-Key': RAPID_API_KEY,
@@ -176,21 +177,30 @@ async function animeCommand(sock, chatId, message, args) {
             return await sock.sendMessage(chatId, { text: '❌ Character or anime not found!' }, { quoted: message });
         }
 
-        // Fisher-Yates Shuffle algorithm to completely randomize the image array
         for (let i = imageUrls.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [imageUrls[i], imageUrls[j]] = [imageUrls[j], imageUrls[i]];
         }
 
         if (subCommand === 'couple' && imageUrls.length >= 2) {
-            await sock.sendMessage(chatId, { image: { url: imageUrls[0] }, caption: `${signature}\n*(Boy / Part 1)*` }, { quoted: message });
+            try {
+                const r1 = await axios.get(imageUrls[0], { responseType: 'arraybuffer', timeout: 10000 });
+                await sock.sendMessage(chatId, { image: Buffer.from(r1.data), caption: `${signature}\n*(Boy / Part 1)*` }, { quoted: message });
+            } catch (e) {}
+
             await new Promise(resolve => setTimeout(resolve, 1000));
-            await sock.sendMessage(chatId, { image: { url: imageUrls[1] }, caption: `${signature}\n*(Girl / Part 2)*` }, { quoted: message });
+
+            try {
+                const r2 = await axios.get(imageUrls[1], { responseType: 'arraybuffer', timeout: 10000 });
+                await sock.sendMessage(chatId, { image: Buffer.from(r2.data), caption: `${signature}\n*(Girl / Part 2)*` }, { quoted: message });
+            } catch (e) {}
         } else {
-            await sock.sendMessage(chatId, { 
-                image: { url: imageUrls[0] }, 
-                caption: signature 
-            }, { quoted: message });
+            try {
+                const imgResp = await axios.get(imageUrls[0], { responseType: 'arraybuffer', timeout: 10000 });
+                await sock.sendMessage(chatId, { image: Buffer.from(imgResp.data), caption: signature }, { quoted: message });
+            } catch (err) {
+                return await sock.sendMessage(chatId, { text: '❌ Failed to send image stream.' }, { quoted: message });
+            }
         }
 
         try { await sock.sendMessage(chatId, { react: { text: '✅', key: message.key } }); } catch {}

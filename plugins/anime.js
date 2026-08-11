@@ -21,7 +21,7 @@ async function animeCommand(sock, chatId, message, args) {
         const query = args.join(' ').toLowerCase();
         let searchQuery = query;
 
-        const randomNum = Math.floor(Math.random() * 1000);
+        const randomNum = Math.floor(Math.random() * 500);
         if (query === 'girl') {
             searchQuery = `cute anime girl aesthetic wallpaper ${randomNum}`;
         } else if (query === 'boy') {
@@ -34,19 +34,23 @@ async function animeCommand(sock, chatId, message, args) {
 
         try { await sock.sendMessage(chatId, { react: { text: '🔄', key: message.key } }); } catch {}
 
-        // Reliable Public Search API endpoint
-        const apiUrl = `https://delirius-apiofc.vercel.app/search/pinterest?text=${encodeURIComponent(searchQuery)}`;
-        const response = await axios.get(apiUrl);
-        const results = response.data?.results || [];
+        const apiUrl = `https://bk9.fun/search/pinterest?q=${encodeURIComponent(searchQuery)}`;
+        const response = await axios.get(apiUrl, { timeout: 10000 });
+        
+        const results = response.data?.result || response.data?.data || [];
 
-        if (results.length === 0) {
+        if (!results || results.length === 0) {
             return await sock.sendMessage(chatId, { text: '❌ Character or anime not found!' }, { quoted: message });
         }
 
-        // Pick a random image from the results
-        const randomImage = results[Math.floor(Math.random() * results.length)];
+        const randomItem = results[Math.floor(Math.random() * results.length)];
+        const imageUrl = typeof randomItem === 'string' ? randomItem : (randomItem.image || randomItem.url);
 
-        const imgResp = await axios.get(randomImage, { responseType: 'arraybuffer', timeout: 10000 });
+        if (!imageUrl) {
+            return await sock.sendMessage(chatId, { text: '❌ Character or anime not found!' }, { quoted: message });
+        }
+
+        const imgResp = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 10000 });
         await sock.sendMessage(chatId, { 
             image: Buffer.from(imgResp.data), 
             caption: signature 

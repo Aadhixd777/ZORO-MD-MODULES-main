@@ -53,17 +53,22 @@ async function instagramCommand(sock, chatId, message) {
             }, { quoted: message });
         }
 
-        const isVideo = igUrl.includes('/reel') || igUrl.includes('/p/') || true;
+        // Fetch media as buffer to ensure WhatsApp reads the file correctly without errors
+        const mediaRes = await axios.get(mediaUrl, { responseType: 'arraybuffer', timeout: 35000 });
+        const buffer = Buffer.from(mediaRes.data);
+        const contentType = mediaRes.headers['content-type'] || '';
+
+        const isVideo = contentType.includes('video') || igUrl.includes('/reel') || igUrl.includes('/p/');
 
         if (isVideo) {
             await sock.sendMessage(chatId, {
-                video: { url: mediaUrl },
+                video: buffer,
                 mimetype: "video/mp4",
                 caption: "𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗗 𝗕𝗬 𝗭𝗢𝗥𝗢 𝗠𝗗 🔥"
             }, { quoted: message });
         } else {
             await sock.sendMessage(chatId, {
-                image: { url: mediaUrl },
+                image: buffer,
                 caption: "𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗗 𝗕𝗬 𝗭𝗢𝗥𝗢 𝗠𝗗 🔥"
             }, { quoted: message });
         }

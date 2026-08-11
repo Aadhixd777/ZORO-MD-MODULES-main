@@ -38,14 +38,15 @@ async function spotifyCommand(sock, chatId, message) {
             const resData = response.data;
             console.log('API Response:', resData);
 
-            if (resData) {
-                const downloadUrl = resData.link || resData.downloadUrl || resData.url || resData.audio || resData.dl;
+            if (resData && resData.success && resData.data) {
+                const songData = resData.data;
+                const downloadUrl = songData.downloadLink || songData.link || songData.downloadUrl || songData.url;
                 
                 if (downloadUrl) {
                     trackInfo = {
-                        title: resData.title || resData.name || 'Spotify Song',
-                        artist: resData.artist || resData.artists || 'Spotify Artist',
-                        thumbnail: resData.cover || resData.thumbnail || resData.image,
+                        title: songData.title || songData.name || 'Spotify Song',
+                        artist: songData.artist || songData.artists || 'Spotify Artist',
+                        thumbnail: songData.cover || songData.thumbnail || songData.image,
                         url: query
                     };
 

@@ -120,7 +120,7 @@ async function animeCommand(sock, chatId, message, args) {
         // Adding timestamp/random suffix to query so Pinterest returns fresh results every time
         const randomNum = Math.floor(Math.random() * 1000);
         if (subCommand === 'girl') {
-            searchQuery = `cute anime girl aesthetic wallpaper ${randomNum}`;
+            searchQuery = 'anime girl aesthetic';
         } else if (subCommand === 'boy') {
             searchQuery = `cool anime boy aesthetic wallpaper ${randomNum}`;
         } else if (subCommand === 'couple') {

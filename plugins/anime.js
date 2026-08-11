@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 const PINTEREST_ACCESS_TOKEN = 'Pina_AMA6W2AYAB5XUAIAGBAMMDWZ2PBO7HYBQBIQC4IEME3XFSCNUWKW6IUADPUOYFFHCQLF6VE4MPMF7D3CO27XTDHCHFLMGEQA'; 
-const signature = "𝗭𝗢𝗥𝗢 𝗕𝗬 𝗔𝗔𝗗𝗛𝗜𝗫𝗗👅";
+const signature = "𝗭𝗢𝗥𝗢 𝗕𝗬 𝗔𝗔𝗗𝗛𝗜X𝗗👅";
 
 async function animeCommand(sock, chatId, message, args) {
     try {
@@ -37,7 +37,6 @@ async function animeCommand(sock, chatId, message, args) {
 
         try { await sock.sendMessage(chatId, { react: { text: '🔄', key: message.key } }); } catch {}
 
-        // Pinterest API V5 സെർച്ച് കോൾ
         const response = await axios.get(`https://api.pinterest.com/v5/pins`, {
             params: { query: searchQuery, bookmark: '' },
             headers: {
@@ -62,7 +61,6 @@ async function animeCommand(sock, chatId, message, args) {
             return await sock.sendMessage(chatId, { text: '❌ Character or anime not found!' }, { quoted: message });
         }
 
-        // ഫോട്ടോകള് റാൻഡം ആയി സെലക്ട് ചെയ്യാൻ
         for (let i = imageUrls.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [imageUrls[i], imageUrls[j]] = [imageUrls[j], imageUrls[i]];
@@ -82,3 +80,5 @@ async function animeCommand(sock, chatId, message, args) {
         await sock.sendMessage(chatId, { text: '❌ Character or anime not found!' }, { quoted: message });
     }
 }
+
+module.exports = { animeCommand };

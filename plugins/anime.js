@@ -117,14 +117,16 @@ async function animeCommand(sock, chatId, message, args) {
         const queryArgs = args.slice(1);
         let searchQuery = subCommand;
 
+        // Adding timestamp/random suffix to query so Pinterest returns fresh results every time
+        const randomNum = Math.floor(Math.random() * 1000);
         if (subCommand === 'girl') {
-            searchQuery = 'anime girl cute aesthetic';
+            searchQuery = `cute anime girl aesthetic wallpaper ${randomNum}`;
         } else if (subCommand === 'boy') {
-            searchQuery = 'anime boy aesthetic';
+            searchQuery = `cool anime boy aesthetic wallpaper ${randomNum}`;
         } else if (subCommand === 'couple') {
-            searchQuery = 'anime couple matching dp';
+            searchQuery = `matching anime couple dp cute ${randomNum}`;
         } else if (queryArgs.length > 0 || !['nom', 'poke', 'cry', 'kiss', 'pat', 'hug', 'wink', 'face-palm', 'quote'].includes(subCommand)) {
-            searchQuery = [subCommand, ...queryArgs].join(' ');
+            searchQuery = [subCommand, ...queryArgs, randomNum].join(' ');
         }
 
         const sub = normalizeType(subCommand);
@@ -165,13 +167,19 @@ async function animeCommand(sock, chatId, message, args) {
         let imageUrls = [];
         for (let item of results) {
             let img = item.images?.orig?.url || item.image || item.url || item.images?.['736x']?.url || item.media?.image?.original?.url;
-            if (img && typeof img === 'string') {
+            if (img && typeof img === 'string' && !imageUrls.includes(img)) {
                 imageUrls.push(img);
             }
         }
 
         if (imageUrls.length === 0) {
             return await sock.sendMessage(chatId, { text: '❌ Character or anime not found!' }, { quoted: message });
+        }
+
+        // Fisher-Yates Shuffle algorithm to completely randomize the image array
+        for (let i = imageUrls.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [imageUrls[i], imageUrls[j]] = [imageUrls[j], imageUrls[i]];
         }
 
         if (subCommand === 'couple' && imageUrls.length >= 2) {

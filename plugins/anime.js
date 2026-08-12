@@ -1,33 +1,8 @@
 const axios = require('axios');
 
 const signature = "𝗭𝗢𝗥𝗢 𝗕𝗬 𝗔𝗔𝗗𝗛𝗜𝗫𝗗👅";
-
-// Direct working anime images database so it never fails
-const animeDatabase = {
-    couple: [
-        "https://i.pinimg.com/736x/82/81/c7/8281c7e944111321774e5e8e88bb00aa.jpg",
-        "https://i.pinimg.com/736x/4a/12/34/4a1234567890abcdef1234567890abcd.jpg",
-        "https://i.pinimg.com/736x/12/34/56/1234567890abcdef1234567890abcdef.jpg"
-    ],
-    girl: [
-        "https://i.pinimg.com/736x/3b/65/c2/3b65c27632906b3a2072efd786d7f02b.jpg",
-        "https://i.pinimg.com/736x/d8/d5/42/d8d54238e8334468202d6b2c28761012.jpg",
-        "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800"
-    ],
-    boy: [
-        "https://i.pinimg.com/736x/9f/8e/7d/9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c.jpg",
-        "https://i.pinimg.com/736x/2c/15/84/2c15848e42f58e1c6b8c7b8086439162.jpg",
-        "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800"
-    ],
-    naruto: [
-        "https://i.pinimg.com/736x/7c/54/a1/7c54a10e8d19762a5b6d512a87a2754c.jpg",
-        "https://i.pinimg.com/736x/29/80/12/2980123456789abcdef0123456789abc.jpg"
-    ],
-    default: [
-        "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800",
-        "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800"
-    ]
-};
+const RAPID_API_KEY = "2e217f019emsh51c0ae7f2c85cb5p17d270jsnc865e97bfc82";
+const RAPID_API_HOST = "pinterest-downloader-download-pinterest-image-video-and-reels.p.rapidapi.com";
 
 async function animeCommand(sock, chatId, message, args) {
     try {
@@ -46,27 +21,38 @@ async function animeCommand(sock, chatId, message, args) {
             return;
         }
 
-        const query = args.join(' ').toLowerCase();
+        const query = args.join(' ');
         
         try { await sock.sendMessage(chatId, { react: { text: '🔄', key: message.key } }); } catch {}
 
-        let selectedList = animeDatabase.default;
+        // RapidAPI Search Pins endpoint call
+        const options = {
+            method: 'GET',
+            url: `https://${RAPID_API_HOST}/pins/search`,
+            params: { query: `${query} anime wallpaper` },
+            headers: {
+                'x-rapidapi-key': RAPID_API_KEY,
+                'x-rapidapi-host': RAPID_API_HOST
+            }
+        };
 
-        if (query.includes('couple')) {
-            selectedList = animeDatabase.couple;
-        } else if (query.includes('girl')) {
-            selectedList = animeDatabase.girl;
-        } else if (query.includes('boy')) {
-            selectedList = animeDatabase.boy;
-        } else if (query.includes('naruto')) {
-            selectedList = animeDatabase.naruto;
-        } else {
-            // For any other character name, use a mix of default/girl/boy to ensure it works smoothly
-            selectedList = [...animeDatabase.girl, ...animeDatabase.boy];
+        const response = await axios.request(options);
+        
+        // Extracting pins data based on typical RapidAPI Pinterest structures
+        const dataNode = response.data?.data || response.data?.result || response.data?.pins || response.data;
+        const results = Array.isArray(dataNode) ? dataNode : (dataNode?.results || []);
+
+        if (!results || results.length === 0) {
+            return await sock.sendMessage(chatId, { text: '❌ Character or anime not found!' }, { quoted: message });
         }
 
-        // Pick a random image from the selected category list
-        const imageUrl = selectedList[Math.floor(Math.random() * selectedList.length)];
+        // Randomly pick an image from the results
+        const randomItem = results[Math.floor(Math.random() * results.length)];
+        const imageUrl = randomItem?.images?.orig?.url || randomItem?.image || randomItem?.url || randomItem;
+
+        if (!imageUrl || typeof imageUrl !== 'string') {
+            return await sock.sendMessage(chatId, { text: '❌ Image not found!' }, { quoted: message });
+        }
 
         const imgResp = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 10000 });
         await sock.sendMessage(chatId, { 
@@ -78,7 +64,7 @@ async function animeCommand(sock, chatId, message, args) {
 
     } catch (err) {
         console.error('Error in anime command:', err.message);
-        await sock.sendMessage(chatId, { text: '❌ Failed to fetch image, please try again!' }, { quoted: message });
+        await sock.sendMessage(chatId, { text: '❌ Failed to fetch image from API!' }, { quoted: message });
     }
 }
 

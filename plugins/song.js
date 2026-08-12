@@ -1,149 +1,151 @@
-const yts = require('yt-search');
-const axios = require('axios');
+Const yts = require('yt-search');
+Const axios = require('axios');
 
-async function songCommand(sock, chatId, message) {
-    try {
-        const fullText = message.message?.conversation || 
-                         message.message?.extendedTextMessage?.text || 
-                         message.message?.imageMessage?.caption || '';
-        const incomingText = fullText.trim();
+// Aswin Sparky API ഫങ്ഷനുകൾ ചേർത്തിരിക്കുന്നു
+Async function getJson(url) {
+    Const res = await axios.get(url);
+    Return res.data;
+}
+
+Async function ytv(url) {
+    Try {
+        Let resData = await getJson('https://api-aswin-sparky.koyeb.app/api/downloader/ytv?url=' + url);
+        Return resData?.data?.url || resData?.url;
+    } catch (e) {
+        Console.error('YTV API Error:', e.message);
+        Throw e;
+    }
+}
+
+Async function yta(queryOrUrl) {
+    Try {
+        // ലിങ്ക് ആണെങ്കിൽ നേരിട്ട് എണ്ണാം അല്ലെങ്കിൽ സെർച്ച് ചെയ്യാം
+        Let apiUrl = queryOrUrl.includes('youtube.com') || queryOrUrl.includes('youtu.be') 
+            ? 'https://api-aswin-sparky.koyeb.app/api/downloader/ytv?url=' + queryOrUrl 
+            : 'https://api-aswin-sparky.koyeb.app/api/downloader/song?search=' + encodeURIComponent(queryOrUrl);
+            
+        Let resData = await getJson(apiUrl);
+        Return resData?.data?.url || resData?.data || resData?.url;
+    } catch (e) {
+        Console.error('YTA API Error:', e.message);
+        Throw e;
+    }
+}
+
+Async function songCommand(sock, chatId, message) {
+    Try {
+        Const fullText = message.message?.conversation || 
+                         Message.message?.extendedTextMessage?.text || 
+                         Message.message?.imageMessage?.caption || '';
+        Const incomingText = fullText.trim();
         
-        const quotedContext = message.message?.extendedTextMessage?.contextInfo;
+        Const quotedContext = message.message?.extendedTextMessage?.contextInfo;
         
-        if (quotedContext && (incomingText === '1' || incomingText === '2')) {
+        If (quotedContext && (incomingText === '1' || incomingText === '2')) {
             await sock.sendMessage(chatId, { react: { text: "⏳", key: message.key } });
             
-            const quotedMsg = quotedContext.quotedMessage;
-            const quotedText = quotedMsg?.conversation || 
-                               quotedMsg?.extendedTextMessage?.text || 
-                               quotedMsg?.imageMessage?.caption || 
-                               quotedMsg?.videoMessage?.caption || 
-                               quotedMsg?.documentMessage?.caption || '';
+            Const quotedMsg = quotedContext.quotedMessage;
+            Const quotedText = quotedMsg?.conversation || 
+                               QuotedMsg?.extendedTextMessage?.text || 
+                               QuotedMsg?.imageMessage?.caption || 
+                               QuotedMsg?.videoMessage?.caption || 
+                               QuotedMsg?.documentMessage?.caption || '';
 
-            let targetUrl = null;
-            const linkMatch = quotedText.match(/(https?:\/\/[^\s]+)/);
-            if (linkMatch) {
-                targetUrl = linkMatch[0];
+            Let targetUrl = null;
+            Const linkMatch = quotedText.match(/(https?:\/\/[^\s]+)/);
+            If (linkMatch) {
+                TargetUrl = linkMatch[0];
             } else {
-                const stringifiedMsg = JSON.stringify(quotedMsg);
-                const fallbackMatch = stringifiedMsg.match(/(https?:\/\/[^\s"']+(?:youtube\.com|youtu\.be)[^\s"']*)/);
-                targetUrl = fallbackMatch ? fallbackMatch[0] : null;
+                Const stringifiedMsg = JSON.stringify(quotedMsg);
+                Const fallbackMatch = stringifiedMsg.match(/(https?:\/\/[^\s"']+(?:youtube\.com|youtu\.be)[^\s"']*)/);
+                TargetUrl = fallbackMatch ? fallbackMatch[0] : null;
             }
 
-            if (!targetUrl) {
-                return await sock.sendMessage(chatId, { text: "❌ Session expired or link not found! Please search again using .song <name>" }, { quoted: message });
+            If (!targetUrl) {
+                Return await sock.sendMessage(chatId, { text: "❌ Session expired or link not found! Please search again using .song <name>" }, { quoted: message });
             }
 
-            function getYouTubeId(url) {
-                const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
-                return match ? match[1] : null;
-            }
-
-            const videoId = getYouTubeId(targetUrl);
-            if (!videoId) {
-                return await sock.sendMessage(chatId, { text: "❌ Invalid YouTube URL!" }, { quoted: message });
-            }
-
-            const RAPID_API_KEY = '4f5e43490dmsh311853f1f007189p1b087fjsn70e285235096'; 
-            const RAPID_API_HOST = 'yt-search-and-download-mp3.p.rapidapi.com';
-
-            if (incomingText === '1') {
+            If (incomingText === '1') {
                 await sock.sendMessage(chatId, { text: `📥 Downloading Audio (MP3)... Please wait.` }, { quoted: message });
 
-                let dlUrl = null;
-                try {
-                    const response = await axios.get(`https://${RAPID_API_HOST}/mp3`, {
-                        params: { id: videoId, url: targetUrl },
-                        headers: {
-                            'X-RapidAPI-Key': RAPID_API_KEY,
-                            'X-RapidAPI-Host': RAPID_API_HOST
-                        },
-                        timeout: 25000
-                    });
-                    dlUrl = response.data?.link || response.data?.download || response.data?.url || response.data?.dl;
+                Let dlUrl = null;
+                Try {
+                    DlUrl = await yta(targetUrl);
                 } catch (e) {
-                    console.error('RapidAPI Error:', e.message);
+                    Console.error('Aswin Sparky Audio Error:', e.message);
                 }
 
-                if (!dlUrl) {
-                    return await sock.sendMessage(chatId, { text: "❌ Audio download failed from RapidAPI." }, { quoted: message });
+                If (!dlUrl) {
+                    Return await sock.sendMessage(chatId, { text: "❌ Audio download failed from API." }, { quoted: message });
                 }
 
-                const audioRes = await axios.get(dlUrl, { responseType: 'arraybuffer', timeout: 60000 });
-                const audioBuffer = Buffer.from(audioRes.data);
+                Const audioRes = await axios.get(dlUrl, { responseType: 'arraybuffer', timeout: 60000 });
+                Const audioBuffer = Buffer.from(audioRes.data);
 
                 await sock.sendMessage(chatId, {
-                    audio: audioBuffer,
-                    mimetype: 'audio/mpeg',
-                    fileName: `song.mp3`,
-                    ptt: false
+                    Audio: audioBuffer,
+                    Mimetype: 'audio/mpeg',
+                    FileName: `song.mp3`,
+                    Ptt: false
                 }, { quoted: message });
 
                 await sock.sendMessage(chatId, { react: { text: "👑", key: message.key } });
-                return;
+                Return;
 
             } else if (incomingText === '2') {
                 await sock.sendMessage(chatId, { text: `📥 Downloading Video (MP4)... Please wait.` }, { quoted: message });
 
-                let videoDlUrl = null;
-                try {
-                    const response = await axios.get(`https://${RAPID_API_HOST}/mp3`, {
-                        params: { id: videoId, url: targetUrl, format: 'mp4' },
-                        headers: {
-                            'X-RapidAPI-Key': RAPID_API_KEY,
-                            'X-RapidAPI-Host': RAPID_API_HOST
-                        },
-                        timeout: 25000
-                    });
-                    videoDlUrl = response.data?.link || response.data?.download || response.data?.url || response.data?.dl;
+                Let videoDlUrl = null;
+                Try {
+                    VideoDlUrl = await ytv(targetUrl);
                 } catch (e) {
-                    console.error('Video API Error:', e.message);
+                    Console.error('Aswin Sparky Video Error:', e.message);
                 }
 
-                if (!videoDlUrl) {
-                    return await sock.sendMessage(chatId, { text: "❌ Video download failed." }, { quoted: message });
+                If (!videoDlUrl) {
+                    Return await sock.sendMessage(chatId, { text: "❌ Video download failed." }, { quoted: message });
                 }
 
                 await sock.sendMessage(chatId, {
-                    video: { url: videoDlUrl },
-                    mimetype: 'video/mp4',
-                    caption: `🎬 *Downloaded via Zoro MD*\n✨ *Created by Aadhixd*`,
-                    fileName: `video.mp4`
+                    Video: { url: videoDlUrl },
+                    Mimetype: 'video/mp4',
+                    Caption: `🎬 *Downloaded via Zoro MD*\n✨ *Created by Aadhixd*`,
+                    FileName: `video.mp4`
                 }, { quoted: message });
 
                 await sock.sendMessage(chatId, { react: { text: "👑", key: message.key } });
-                return;
+                Return;
             }
         }
 
-        const queryText = fullText.split(' ').slice(1).join(' ').trim();
-        if (!queryText) {
-            return await sock.sendMessage(chatId, { 
-                text: '⭐ *𝗭𝗢𝗥𝗢-𝗠𝗗 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥* ⭐\n\n❌ *Error:* Please provide a song name!\n💡 *Example:* `.song Faded`' 
+        Const queryText = fullText.split(' ').slice(1).join(' ').trim();
+        If (!queryText) {
+            Return await sock.sendMessage(chatId, { 
+                Text: '⭐ *𝗭𝗢𝗥𝗢-𝗠𝗗 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥* ⭐\n\n❌ *Error:* Please provide a song name!\n💡 *Example:* `.song Faded`' 
             }, { quoted: message });
         }
 
         await sock.sendMessage(chatId, { react: { text: "⚡", key: message.key } });
 
-        const searchResults = await yts(queryText);
-        const video = searchResults?.videos?.[0];
+        Const searchResults = await yts(queryText);
+        Const video = searchResults?.videos?.[0];
 
-        if (!video) {
-            return await sock.sendMessage(chatId, { text: "❌ *Oops!* No results found on YouTube!" }, { quoted: message });
+        If (!video) {
+            Return await sock.sendMessage(chatId, { text: "❌ *Oops!* No results found on YouTube!" }, { quoted: message });
         }
 
-        let thumbBuffer = null;
-        let imageToUse = null;
+        Let thumbBuffer = null;
+        Let imageToUse = null;
         
-        try {
-            if (video.thumbnail) {
-                const thumbRes = await axios.get(video.thumbnail, { responseType: 'arraybuffer', timeout: 8000 });
-                thumbBuffer = Buffer.from(thumbRes.data);
-                imageToUse = thumbBuffer;
+        Try {
+            If (video.thumbnail) {
+                Const thumbRes = await axios.get(video.thumbnail, { responseType: 'arraybuffer', timeout: 8000 });
+                ThumbBuffer = Buffer.from(thumbRes.data);
+                ImageToUse = thumbBuffer;
             }
         } catch (e) {}
 
-        const vidmateMenuText = `┌  📥 *𝗭𝗢𝗥𝗢-𝗠𝗗 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥* 📥
+        Const vidmateMenuText = `┌  📥 *𝗭𝗢𝗥𝗢-𝗠𝗗 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥* 📥
 │
 ├  🎬 *Title:* ${video.title}
 ├  ⏱️ *Duration:* ${video.timestamp}
@@ -158,10 +160,10 @@ async function songCommand(sock, chatId, message) {
 │  𝗢𝘄𝗻𝗲𝗿 & 𝗗𝗲𝘃𝗲𝗹𝗼𝗽𝗲𝗱 𝗯𝘆 👑 𝗔𝗮𝗱𝗵𝗶𝘅𝗱 ⚡
 └─────────────────────────────────────`;
 
-        if (imageToUse) {
+        If (imageToUse) {
             await sock.sendMessage(chatId, {
-                image: imageToUse,
-                caption: vidmateMenuText
+                Image: imageToUse,
+                Caption: vidmateMenuText
             }, { quoted: message });
         } else {
             await sock.sendMessage(chatId, { text: vidmateMenuText }, { quoted: message });
@@ -170,9 +172,9 @@ async function songCommand(sock, chatId, message) {
         await sock.sendMessage(chatId, { react: { text: "👑", key: message.key } });
 
     } catch (err) {
-        console.error('VidMate Style Error:', err.message);
+        Console.error('VidMate Style Error:', err.message);
         await sock.sendMessage(chatId, { text: `❌ *Error:* Failed to process VidMate request.` }, { quoted: message });
     }
 }
 
-module.exports = songCommand;
+Module.exports = songCommand;

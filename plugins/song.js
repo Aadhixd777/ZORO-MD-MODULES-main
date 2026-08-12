@@ -1,180 +1,127 @@
-Const yts = require('yt-search');
-Const axios = require('axios');
+/*------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// Aswin Sparky API ഫങ്ഷനുകൾ ചേർത്തിരിക്കുന്നു
-Async function getJson(url) {
-    Const res = await axios.get(url);
-    Return res.data;
-}
 
-Async function ytv(url) {
-    Try {
-        Let resData = await getJson('https://api-aswin-sparky.koyeb.app/api/downloader/ytv?url=' + url);
-        Return resData?.data?.url || resData?.url;
-    } catch (e) {
-        Console.error('YTV API Error:', e.message);
-        Throw e;
-    }
-}
+Copyright (C) 2023 Loki - Xer.
+Licensed under the  GPL-3.0 License;
+you may not use this file except in compliance with the License.
+Jarvis - Loki-Xer 
 
-Async function yta(queryOrUrl) {
-    Try {
-        // ലിങ്ക് ആണെങ്കിൽ നേരിട്ട് എണ്ണാം അല്ലെങ്കിൽ സെർച്ച് ചെയ്യാം
-        Let apiUrl = queryOrUrl.includes('youtube.com') || queryOrUrl.includes('youtu.be') 
-            ? 'https://api-aswin-sparky.koyeb.app/api/downloader/ytv?url=' + queryOrUrl 
-            : 'https://api-aswin-sparky.koyeb.app/api/downloader/song?search=' + encodeURIComponent(queryOrUrl);
-            
-        Let resData = await getJson(apiUrl);
-        Return resData?.data?.url || resData?.data || resData?.url;
-    } catch (e) {
-        Console.error('YTA API Error:', e.message);
-        Throw e;
-    }
-}
 
-Async function songCommand(sock, chatId, message) {
-    Try {
-        Const fullText = message.message?.conversation || 
-                         Message.message?.extendedTextMessage?.text || 
-                         Message.message?.imageMessage?.caption || '';
-        Const incomingText = fullText.trim();
-        
-        Const quotedContext = message.message?.extendedTextMessage?.contextInfo;
-        
-        If (quotedContext && (incomingText === '1' || incomingText === '2')) {
-            await sock.sendMessage(chatId, { react: { text: "⏳", key: message.key } });
-            
-            Const quotedMsg = quotedContext.quotedMessage;
-            Const quotedText = quotedMsg?.conversation || 
-                               QuotedMsg?.extendedTextMessage?.text || 
-                               QuotedMsg?.imageMessage?.caption || 
-                               QuotedMsg?.videoMessage?.caption || 
-                               QuotedMsg?.documentMessage?.caption || '';
+------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-            Let targetUrl = null;
-            Const linkMatch = quotedText.match(/(https?:\/\/[^\s]+)/);
-            If (linkMatch) {
-                TargetUrl = linkMatch[0];
-            } else {
-                Const stringifiedMsg = JSON.stringify(quotedMsg);
-                Const fallbackMatch = stringifiedMsg.match(/(https?:\/\/[^\s"']+(?:youtube\.com|youtu\.be)[^\s"']*)/);
-                TargetUrl = fallbackMatch ? fallbackMatch[0] : null;
-            }
 
-            If (!targetUrl) {
-                Return await sock.sendMessage(chatId, { text: "❌ Session expired or link not found! Please search again using .song <name>" }, { quoted: message });
-            }
+const {
+    yts,
+    System,
+    config,
+    YtInfo,
+    toAudio,
+    youtube,
+    isPrivate,
+} = require('../lib/');
+const { isUrl, getBuffer, AddMp3Meta, extractUrlsFromText } = require('./client/');
 
-            If (incomingText === '1') {
-                await sock.sendMessage(chatId, { text: `📥 Downloading Audio (MP3)... Please wait.` }, { quoted: message });
 
-                Let dlUrl = null;
-                Try {
-                    DlUrl = await yta(targetUrl);
-                } catch (e) {
-                    Console.error('Aswin Sparky Audio Error:', e.message);
-                }
+System({
+      pattern: '(video|ytv)',
+      fromMe: isPrivate,
+      type: 'download',
+      desc: 'YouTube video downloader'
+}, async (message, match) => {
+      match = match || message.reply_message.text;
+      if (!match) return await message.reply('_Give a YouTube video *Url* or *Query*_');
+     const matchUrl = (await extractUrlsFromText(match))[0];
+     if (isUrl(matchUrl)) {
+         const { title, url } = await youtube(matchUrl, "video");
+         await message.reply("_*" + "downloading " + title + "*_");
+         return await message.send({ url: url }, { caption: '*made with 🤍*', quoted: message.data }, 'video');
+      } else {
+        const { url } = (await yts(match))[0];
+        const data = await youtube(url, "video");
+        await message.reply("_*" + "downloading " + data.title + "*_"); 
+        return await message.send({ url: data.url }, { caption: '*made with 🤍*', quoted: message.data }, 'video');
+      }
+});
 
-                If (!dlUrl) {
-                    Return await sock.sendMessage(chatId, { text: "❌ Audio download failed from API." }, { quoted: message });
-                }
+System({
+      pattern: '(yta|song)',
+      fromMe: isPrivate,
+      type: 'download',
+      desc: 'YouTube audio downloader'
+}, async (message, match) => {
+      match = match || message.reply_message.text;
+      if (!match) return await message.reply('_Give a YouTube video *Url* or *Query*_');
+      const matchUrl = (await extractUrlsFromText(match))[0];
+      if (isUrl(matchUrl)) {
+          const { url } = await youtube(matchUrl);
+          const { title, author, thumbnail } = await YtInfo(matchUrl);
+          await message.reply("_*" + "downloading " + title + "*_");
+          const aud = await AddMp3Meta(await toAudio(await getBuffer(url)), await getBuffer(thumbnail), { title: title, body: author });
+          await message.reply(aud, { mimetype: 'audio/mpeg' }, "audio");
+      } else {
+          const { title, author, thumbnail, url } = (await yts(match))[0];
+          await message.reply("_*" + "downloading " + title + "*_");
+          const aud = await AddMp3Meta(await toAudio(await getBuffer((await youtube(url)).url)), await getBuffer(thumbnail), { title: title, body: author.name });
+          await message.reply(aud, { mimetype: 'audio/mpeg' }, "audio");
+     }
+});
 
-                Const audioRes = await axios.get(dlUrl, { responseType: 'arraybuffer', timeout: 60000 });
-                Const audioBuffer = Buffer.from(audioRes.data);
+System({
+    pattern: 'play',
+    fromMe: isPrivate,
+    desc: 'YouTube video player',
+    type: 'download',
+}, async (message, match) => {
+      if (!match) return await message.reply('_Give a *Query* to play the song or video_');
+      if (isUrl(match)) {
+          let matchUrl = (await extractUrlsFromText(match))[0];
+          const yt = await YtInfo(matchUrl);
+          return await message.reply(`*_${yt.title}_*\n\n\n\`\`\`1.⬢\`\`\` *audio*\n\`\`\`2.⬢\`\`\` *video*\n\n_*Send a number as a reply to download*_`, { contextInfo: { externalAdReply: { title: yt.author, body: yt.seconds, thumbnail: await getBuffer(yt.thumbnail), mediaType: 1, mediaUrl: yt.url, sourceUrl: yt.url, showAdAttribution: false, renderLargerThumbnail: true }}});
+      } else {
+          const yt = (await yts(match))[0];
+          return await message.reply(`*_${yt.title}_*\n\n\n\`\`\`1.⬢\`\`\` *audio*\n\`\`\`2.⬢\`\`\` *video*\n\n_*Send a number as a reply to download*_`, { contextInfo: { externalAdReply: { title: yt.author.name, body: yt.ago, thumbnail: await getBuffer(yt.image), mediaType: 1, mediaUrl: yt.url, sourceUrl: yt.url, showAdAttribution: false, renderLargerThumbnail: true }}});
+      }
+});
+  
+System({
+    on: 'text',
+    fromMe: isPrivate,
+    dontAddCommandList: true,
+}, async (message) => {
+    if (message.isBot || !message.quoted) return
+    if (!message.reply_message.fromMe || !message.reply_message.text) return;
+    if (!message.body.includes('⬢')) return;
+    let match = message.body.replace('⬢', '');
+    if (message.body.includes('1')) {
+      const ytAudio = (await yts(match))[0];
+      const msg = await message.send(`_*Now playing : ${ytAudio.title} 🎶*_`);
+      const data = config.AUDIO_DATA.split(';');
+      const aud = await AddMp3Meta(await toAudio(await getBuffer((await youtube(ytAudio.url)).url), 'mp3'), await getBuffer(data[2]), { title: data[0], body: data[1], });
+      await message.reply(aud, { mimetype: 'audio/mpeg', quoted: msg }, "audio");
+    } else if (message.body.includes('2')) {
+      const data = (await yts(match))[0];
+      const q = await message.send(`_*Now playing : ${data.title} 🎶*_`);
+      await message.send(
+        await getBuffer((await youtube(data.url, "video")).url), { caption: `_*${data.title}*_`, quoted: q }, 'video');
+    };
+});
+  
+System({
+       pattern: 'yts',
+       fromMe: isPrivate,
+       desc: "yt search",
+       type: "search",
+}, async (message, match) => {
+      if (!match) return await message.reply('_Please provide an *Query or Url*');    
+      if (isUrl(match)) {
+        let matchUrl = (await extractUrlsFromText(match))[0];
+        const yt = await YtInfo(matchUrl);
+        await message.reply(`*_${yt.title}_*\n\n\n\`\`\`1.⬢\`\`\` *audio*\n\`\`\`2.⬢\`\`\` *video*\n\n_*Send a number as a reply to download*_`, { contextInfo: { externalAdReply: { title: yt.author, body: yt.seconds, thumbnail: await getBuffer(yt.thumbnail), mediaType: 1, mediaUrl: yt.url, sourceUrl: yt.url, showAdAttribution: false, renderLargerThumbnail: true }}});
+      } else {
+        const videos = await yts(match);
+        const result = videos.map(video => `*🏷️ Title :* _*${video.title}*_\n*📁 Duration :* _${video.duration}_\n*🔗 Link :* _${video.url}_`);
+        return await message.reply(`\n\n_*Result Of ${match} 🔍*_\n\n`+result.join('\n\n')+"\n\n*🤍 صنع بواسطة لوكي*")
+      }
+});
 
-                await sock.sendMessage(chatId, {
-                    Audio: audioBuffer,
-                    Mimetype: 'audio/mpeg',
-                    FileName: `song.mp3`,
-                    Ptt: false
-                }, { quoted: message });
-
-                await sock.sendMessage(chatId, { react: { text: "👑", key: message.key } });
-                Return;
-
-            } else if (incomingText === '2') {
-                await sock.sendMessage(chatId, { text: `📥 Downloading Video (MP4)... Please wait.` }, { quoted: message });
-
-                Let videoDlUrl = null;
-                Try {
-                    VideoDlUrl = await ytv(targetUrl);
-                } catch (e) {
-                    Console.error('Aswin Sparky Video Error:', e.message);
-                }
-
-                If (!videoDlUrl) {
-                    Return await sock.sendMessage(chatId, { text: "❌ Video download failed." }, { quoted: message });
-                }
-
-                await sock.sendMessage(chatId, {
-                    Video: { url: videoDlUrl },
-                    Mimetype: 'video/mp4',
-                    Caption: `🎬 *Downloaded via Zoro MD*\n✨ *Created by Aadhixd*`,
-                    FileName: `video.mp4`
-                }, { quoted: message });
-
-                await sock.sendMessage(chatId, { react: { text: "👑", key: message.key } });
-                Return;
-            }
-        }
-
-        Const queryText = fullText.split(' ').slice(1).join(' ').trim();
-        If (!queryText) {
-            Return await sock.sendMessage(chatId, { 
-                Text: '⭐ *𝗭𝗢𝗥𝗢-𝗠𝗗 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥* ⭐\n\n❌ *Error:* Please provide a song name!\n💡 *Example:* `.song Faded`' 
-            }, { quoted: message });
-        }
-
-        await sock.sendMessage(chatId, { react: { text: "⚡", key: message.key } });
-
-        Const searchResults = await yts(queryText);
-        Const video = searchResults?.videos?.[0];
-
-        If (!video) {
-            Return await sock.sendMessage(chatId, { text: "❌ *Oops!* No results found on YouTube!" }, { quoted: message });
-        }
-
-        Let thumbBuffer = null;
-        Let imageToUse = null;
-        
-        Try {
-            If (video.thumbnail) {
-                Const thumbRes = await axios.get(video.thumbnail, { responseType: 'arraybuffer', timeout: 8000 });
-                ThumbBuffer = Buffer.from(thumbRes.data);
-                ImageToUse = thumbBuffer;
-            }
-        } catch (e) {}
-
-        Const vidmateMenuText = `┌  📥 *𝗭𝗢𝗥𝗢-𝗠𝗗 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥* 📥
-│
-├  🎬 *Title:* ${video.title}
-├  ⏱️ *Duration:* ${video.timestamp}
-├  👀 *Views:* ${video.views}
-├  🔗 *Link:* ${video.url}
-│
----------------------------------------
-│  👇 *Reply to this message with:*
-│  *1️⃣* 🎵 Audio (MP3 Format)
-│  *2️⃣* 🎥 Video (MP4 Format)
-└─────────────────────────────────────
-│  𝗢𝘄𝗻𝗲𝗿 & 𝗗𝗲𝘃𝗲𝗹𝗼𝗽𝗲𝗱 𝗯𝘆 👑 𝗔𝗮𝗱𝗵𝗶𝘅𝗱 ⚡
-└─────────────────────────────────────`;
-
-        If (imageToUse) {
-            await sock.sendMessage(chatId, {
-                Image: imageToUse,
-                Caption: vidmateMenuText
-            }, { quoted: message });
-        } else {
-            await sock.sendMessage(chatId, { text: vidmateMenuText }, { quoted: message });
-        }
-
-        await sock.sendMessage(chatId, { react: { text: "👑", key: message.key } });
-
-    } catch (err) {
-        Console.error('VidMate Style Error:', err.message);
-        await sock.sendMessage(chatId, { text: `❌ *Error:* Failed to process VidMate request.` }, { quoted: message });
-    }
-}
-
-Module.exports = songCommand;
+module.exports = songCommand;

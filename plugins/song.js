@@ -1,79 +1,104 @@
-const yts = require('yt-search');
-const ytdl = require('@distube/ytdl-core');
-
-async function songCommand(sock, chatId, message) {
-    try {
-        const fullText = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
-        const text = fullText.split(' ').slice(1).join(' ').trim();
-
-        if (!text) {
-            return await sock.sendMessage(chatId, { 
-                text: '⭐ *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐌𝐔𝐒𝐈𝐂* ⭐\n\n❌ *Error:* Please provide a song name!\n💡 *Example:* `.song Faded`' 
-            }, { quoted: message });
-        }
-
-        await sock.sendMessage(chatId, { react: { text: "⚡", key: message.key } });
-
-        let processingMsg = await sock.sendMessage(chatId, { 
-            text: `🔍 *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐒𝐄𝐀𝐑𝐂𝐇𝐈𝐍𝐆* 🔍\n\n» *Query:* \`${text}\`\n» *Status:* Searching on YouTube...` 
-        }, { quoted: message });
-
-        const searchResults = await yts(text);
-        const videos = searchResults?.videos;
-        
-        if (!videos || videos.length === 0) {
-            return await sock.sendMessage(chatId, { 
-                text: "❌ *Oops!* No songs found matching your query." 
-            }, { quoted: message });
-        }
-        
-        const video = videos[0];
-
-        await sock.sendMessage(chatId, { 
-            text: `🎵 *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐌𝐔𝐒𝐈𝐂* 🎵\n\n📝 *Title:* ${video.title}\n📥 *Status:* Downloading audio stream...`,
-            edit: processingMsg.key
-        });
-
-        const stream = ytdl(video.url, { 
-            filter: 'audioonly', 
-            quality: 'highestaudio',
-            highWaterMark: 1 << 25 
-        });
-        
-        const chunks = [];
-        for await (const chunk of stream) {
-            chunks.push(chunk);
-        }
-        const audioBuffer = Buffer.concat(chunks);
-
-        await sock.sendMessage(chatId, { 
-            text: `🚀 *𝐙𝐎𝐑𝐎-𝐌𝐃 UPLOADING* 🚀\n\n» *Song:* ${video.title}\n» *Status:* Pushing audio to chat...`,
-            edit: processingMsg.key
-        });
-
-        await sock.sendMessage(chatId, {
-            audio: audioBuffer,
-            mimetype: 'audio/mpeg',
-            ptt: false
-        }, { quoted: message });
-
-        await sock.sendMessage(chatId, { 
-            text: `✅ *𝐙𝐎𝐑𝐎-𝐌𝐃 𝐌𝐔𝐒𝐈𝐂 𝐃𝐄𝐋𝐈𝐕𝐄𝐑𝐄𝐃* ✅\n\n🎶 *${video.title}*`, 
-            edit: processingMsg.key 
-        });
-        
-        await sock.sendMessage(chatId, { react: { text: "👑", key: message.key } });
-
-    } catch (err) {
-        console.error('Zoro MD Song Error:', err);
-        try {
-            await sock.sendMessage(chatId, { 
-                text: `❌ *Error:* Could not process this song download. Please try again later.` 
-            }, { quoted: message });
-        } catch (secondaryErr) {
-            console.error('Failed to send error message:', secondaryErr);
-        }
-    }
-}
-
-module.exports = songCommand;
+‎const yts = require('yt-search');
+‎const axios = require('axios');
+‎
+‎async function songCommand(sock, chatId, message) {
+‎    try {
+‎        const fullText = message.message?.conversation || 
+‎                         message.message?.extendedTextMessage?.text || 
+‎                         message.message?.imageMessage?.caption || '';
+‎        const incomingText = fullText.trim();
+‎        
+‎        const quotedContext = message.message?.extendedTextMessage?.contextInfo;
+‎        
+‎        if (quotedContext && (incomingText === '1' || incomingText === '2')) {
+‎            await sock.sendMessage(chatId, { react: { text: "⏳", key: message.key } });
+‎            
+‎            const quotedMsg = quotedContext.quotedMessage;
+‎            const quotedText = quotedMsg?.conversation || 
+‎                               quotedMsg?.extendedTextMessage?.text || 
+‎                               quotedMsg?.imageMessage?.caption || 
+‎                               quotedMsg?.videoMessage?.caption || 
+‎                               quotedMsg?.documentMessage?.caption || '';
+‎
+‎            let targetUrl = null;
+‎            const linkMatch = quotedText.match(/(https?:\/\/[^\s]+)/);
+‎            if (linkMatch) {
+‎                targetUrl = linkMatch[0];
+‎            } else {
+‎                const stringifiedMsg = JSON.stringify(quotedMsg);
+‎                const fallbackMatch = stringifiedMsg.match(/(https?:\/\/[^\s"']+(?:youtube\.com|youtu\.be)[^\s"']*)/);
+‎                targetUrl = fallbackMatch ? fallbackMatch[0] : null;
+‎            }
+‎
+‎            if (!targetUrl) {
+‎                return await sock.sendMessage(chatId, { text: "❌ Session expired or link not found! Please search again using .song <name>" }, { quoted: message });
+‎            }
+‎
+‎            function getYouTubeId(url) {
+‎                const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+‎                return match ? match[1] : null;
+‎            }
+‎
+‎            const videoId = getYouTubeId(targetUrl);
+‎            if (!videoId) {
+‎                return await sock.sendMessage(chatId, { text: "❌ Invalid YouTube URL!" }, { quoted: message });
+‎            }
+‎
+‎            const RAPID_API_KEY = '4f5e43490dmsh311853f1f007189p1b087fjsn70e285235096'; 
+‎            const RAPID_API_HOST = 'yt-search-and-download-mp3.p.rapidapi.com';
+‎
+‎            if (incomingText === '1') {
+‎                await sock.sendMessage(chatId, { text: `📥 Downloading Audio (MP3)... Please wait.` }, { quoted: message });
+‎
+‎                let dlUrl = null;
+‎                try {
+‎                    const response = await axios.get(`https://${RAPID_API_HOST}/mp3`, {
+‎                        params: { id: videoId, url: targetUrl },
+‎                        headers: {
+‎                            'X-RapidAPI-Key': RAPID_API_KEY,
+‎                            'X-RapidAPI-Host': RAPID_API_HOST
+‎                        },
+‎                        timeout: 25000
+‎                    });
+‎                    dlUrl = response.data?.link || response.data?.download || response.data?.url || response.data?.dl;
+‎                } catch (e) {
+‎                    console.error('RapidAPI Error:', e.message);
+‎                }
+‎
+‎                if (!dlUrl) {
+‎                    return await sock.sendMessage(chatId, { text: "❌ Audio download failed from RapidAPI." }, { quoted: message });
+‎                }
+‎
+‎                const audioRes = await axios.get(dlUrl, { responseType: 'arraybuffer', timeout: 60000 });
+‎                const audioBuffer = Buffer.from(audioRes.data);
+‎
+‎                await sock.sendMessage(chatId, {
+‎                    audio: audioBuffer,
+‎                    mimetype: 'audio/mpeg',
+‎                    fileName: `song.mp3`,
+‎                    ptt: false
+‎                }, { quoted: message });
+‎
+‎                await sock.sendMessage(chatId, { react: { text: "👑", key: message.key } });
+‎                return;
+‎
+‎            } else if (incomingText === '2') {
+‎                await sock.sendMessage(chatId, { text: `📥 Downloading Video (MP4)... Please wait.` }, { quoted: message });
+‎
+‎                let videoDlUrl = null;
+‎                try {
+‎                    const response = await axios.get(`https://${RAPID_API_HOST}/mp3`, {
+‎                        params: { id: videoId, url: targetUrl, format: 'mp4' },
+‎                        headers: {
+‎                            'X-RapidAPI-Key': RAPID_API_KEY,
+‎                            'X-RapidAPI-Host': RAPID_API_HOST
+‎                        },
+‎                        timeout: 25000
+‎                    });
+‎                    videoDlUrl = response.data?.link || response.data?.download || response.data?.url || response.data?.dl;
+‎                } catch (e) {
+‎                    console.error('Video API Error:', e.message);
+‎                }
+‎
+‎                if (!videoDlUrl) {
+‎                    return await sock.sendMessage(chatId, {

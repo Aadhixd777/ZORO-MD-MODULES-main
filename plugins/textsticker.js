@@ -13,7 +13,7 @@ async function textstickerCommand(sock, chatId, message, text) {
 │ *Examples:*
 │ ➤ .textsticker Hello World
 │ ➤ .textsticker ZORO MD
-│ ➤ .textsticker 🔥 ROMEO
+│ ➤ .textsticker 🔥 Aadhixd
 │
 │ Converts any text into a sticker!
 │ Text will be shown on a transparent background.
@@ -48,7 +48,7 @@ async function textstickerCommand(sock, chatId, message, text) {
         const json = {
             "sticker-pack-id": "ZORO.md",
             "sticker-pack-name": "ZORO MD Text",
-            "sticker-pack-publisher": "ROMEO",
+            "sticker-pack-publisher": "Aadhixd",
             "emojis": ["📝", "💬"]
         };
         const exifAttr = Buffer.from([0x49, 0x49, 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00]);

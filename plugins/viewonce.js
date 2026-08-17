@@ -1,4 +1,4 @@
-const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
+const { downloadContentFromMessage } = require('@@aadhixd777/baileys');
 
 async function viewonceCommand(sock, chatId, message) {
     // Extract quoted message

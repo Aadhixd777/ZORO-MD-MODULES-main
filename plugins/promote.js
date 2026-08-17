@@ -4,24 +4,41 @@ async function promoteCommand(sock, chatId, mentionedJids, message) {
     try {
         if (!chatId.endsWith('@g.us')) return;
 
+        // Get sender details
         const senderId = message.key.participant || message.participant || message.key.remoteJid;
         const cleanSenderNum = senderId.split('@')[0].split(':')[0];
 
+        // Check if the sender is the repository owner
         const isOwner = message.key.fromMe || cleanSenderNum === OWNER_NUMBER;
+        if (!isOwner) return;
 
+        // Get bot's own number/ID
+        const botJid = sock.user.id;
+        const cleanBotNum = botJid.split('@')[0].split(':')[0];
+
+        // If the owner is using their own number as the bot itself in this chat, 
+        // and they are not admin, let it show a message or ignore if it's the personal account.
+        // But if it's a public bot deployed by someone else, cleanBotNum will NOT match OWNER_NUMBER.
+        
         const groupMetadata = await sock.groupMetadata(chatId);
         const participants = groupMetadata.participants;
         
-        const botParticipant = participants.find(p => p.id.includes(sock.user.id.split('@')[0]));
+        const botParticipant = participants.find(p => p.id.includes(cleanBotNum));
         const senderParticipant = participants.find(p => p.id.includes(cleanSenderNum));
 
         const isBotAdmin = botParticipant && (botParticipant.admin === 'admin' || botParticipant.admin === 'superadmin');
         const isSenderAdmin = senderParticipant && (senderParticipant.admin === 'admin' || senderParticipant.admin === 'superadmin');
 
-        if (!isBotAdmin) return;
+        // If the bot itself is not an admin, it cannot promote anyone
+        if (!isBotAdmin) {
+            console.log("Bot is not an admin in this group.");
+            return;
+        }
 
-        // സെൻഡർ ഓണറോ അല്ലെങ്കിൽ ഗ്രൂപ്പ് അഡ്മിനോ ആണെങ്കിൽ മാത്രം അനുവദിക്കും
-        if (!isOwner && !isSenderAdmin) return;
+        // If the owner is already an admin, no need to run
+        if (isSenderAdmin) {
+            return;
+        }
 
         let userToPromote = [];
         
@@ -31,19 +48,12 @@ async function promoteCommand(sock, chatId, mentionedJids, message) {
             userToPromote = [message.message.extendedTextMessage.contextInfo.participant];
         }
         
-        // ആരെയും മെൻഷൻ ചെയ്തില്ലെങ്കിൽ:
+        // If no user is mentioned or replied to, promote the owner automatically
         if (userToPromote.length === 0) {
-            if (isOwner) {
-                // ഓണർ ആണെങ്കിൽ സ്വയം അഡ്മിൻ ആക്കും
-                userToPromote = [senderId];
-            } else if (isSenderAdmin) {
-                // ഗ്രൂപ്പ് അഡ്മിൻ ആണെങ്കിലും ആരെയും മെൻഷൻ ചെയ്യാതിരുന്നാൽ തടയും
-                return;
-            } else {
-                return;
-            }
+            userToPromote = [senderId];
         }
 
+        // Execute promotion
         await sock.groupParticipantsUpdate(chatId, userToPromote, "promote");
         
         const usernames = userToPromote.map(jid => `@${jid.split('@')[0]}`);
@@ -85,7 +95,7 @@ async function handlePromotionEvent(sock, groupId, participants, author) {
         const promotionMessage = `*『 𝐆𝐑𝐎𝐔𝐏 𝐏𝐑𝐎𝐌𝐎𝐓𝐈𝐎𝐍 』*\n\n` +
             `👥 *𝐏𝐫𝐨𝐦𝐨𝐭𝐞𝐝 𝐔𝐬𝐞𝐫${participants.length > 1 ? 's' : ''}:*\n` +
             `${promotedUsernames.map(name => `• ${name}`).join('\n')}\n\n` +
-            `👑 *𝐏𝐫𝐨𝐦𝐨𝐭𝐞𝐝 𝐁𝐲:* ${promotedBy}\n\n` +
+            `👑 *𝐏𝐫𝐨ⵎ𝐨𝐭𝐞𝐝 𝐁𝐲:* ${promotedBy}\n\n` +
             `📅 *𝐃𝐚𝐭𝐞:* ${new Date().toLocaleString()}`;
         
         await sock.sendMessage(groupId, {

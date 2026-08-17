@@ -5,7 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
+const { downloadContentFromMessage } = require("@aadhixd777/baileys");
 const ffmpeg = require('fluent-ffmpeg');
 
 // Helper function to read/write state

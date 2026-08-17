@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
+const { downloadContentFromMessage } = require('@aadhixd777/baileys');
 
 const CUSTOM_AUDIO_URLS = [
     "https://files.catbox.moe/1a3ela.mp3",

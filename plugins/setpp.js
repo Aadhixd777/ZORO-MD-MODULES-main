@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
+const { downloadContentFromMessage } = require('@aadhixd777/baileys');
 
 async function setProfilePicture(sock, chatId, msg) {
     try {
@@ -68,4 +68,4 @@ async function setProfilePicture(sock, chatId, msg) {
     }
 }
 
-module.exports = setProfilePicture; 
+module.exports = setProfilePicture;

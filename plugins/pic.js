@@ -1,6 +1,6 @@
 const fs = require('fs');
 const sharp = require('sharp');
-const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
+const { downloadContentFromMessage } = require('@aadhixd777/baileys');
 
 async function picCommand(sock, chatId, message, quoted) {
     // 1. Check if the quoted message exists and is a sticker
